@@ -1,6 +1,6 @@
 add_compile_options(-DUSE_MPI)
 
-include_directories($ENV{MPI_PATH}/include)
+include_directories(BEFORE $ENV{MPI_PATH}/include)
 find_library(MPI_CXX NAMES libmpi.so libmpicxx.so HINTS "$ENV{MPI_PATH}/lib" "$ENV{MPI_PATH}/lib64")
 
 IF(NOT "$ENV{MPI_PATH}" STREQUAL "")

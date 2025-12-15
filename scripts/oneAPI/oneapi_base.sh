@@ -2,6 +2,6 @@
 path_script=$(realpath $(dirname "${BASH_SOURCE[0]}"))
 chmod +x $path_script/*.txt
 chmod +x $path_script/*.sh
-source ~/Apps/oneAPI/oneAPI-2024/setvars.sh --force --config=$path_script/config_base.txt --include-intel-llvm
+source /opt/intel/oneapi/setvars.sh --force --config=$path_script/config_base.txt --include-intel-llvm
 # >/dev/null 
 # only basic compiler with clang/clang++ and tbb tools are included.

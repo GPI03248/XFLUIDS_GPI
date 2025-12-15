@@ -8,12 +8,14 @@
         "nOutMax": 100,
         "OutInterval": 1000000,
         "OutBoundary": 0,
-        "CFLnumber": 0.6,
+        "CFLnumber": 0.5,
         "OutTimeStamps": [
-            "0.05: {-C=X,Y,0.0;-V=rho,P,T}",
-            "2.5: {-C=X,Y,0.0;-V=rho,P,T}",
-            "5.0: {-C=X,Y,0.0;-V=rho,P,T}",
-            "10.0: {-C=X,Y,0.0;-V=rho,P,T}"
+            "0.05: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.10: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.20: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.30: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.40: {-C=X,0.0,0.0;-V=rho,P,T}",
+            "0.50: {-C=X,0.0,0.0;-V=rho,P,T}"
         ]
     },
     "mpi": {
@@ -21,7 +23,7 @@
         "my": 1,
         "mz": 1,
         "DeviceSelect": [
-            4,
+            1,
             0,
             0
         ]
@@ -30,13 +32,13 @@
     "sources": {},
     "mesh": {
         "DOMAIN_Size": [
-            10.0,
-            10.0,
-            0.0
+            0.05,
+            0.05,
+            0.05
         ],
         "Resolution": [
             200,
-            200,
+            0,
             0
         ],
         "Boundarys": [

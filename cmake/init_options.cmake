@@ -4,7 +4,7 @@ set(EIGEN_ALLOC "OROC") # Eigen memory allocate method used in FDM method
 # # RGIF: allocate eigen matrix in registers of kernel function(eigen_l[Emax][Emax], eigen_r[Emax][Emax]), which makes regesters spills out as Emax increases
 option(COP "if enable compoent" ON)
 option(EXPLICIT_ALLOC "if enable explict mpi buffer allocate" ON) # ON: allocate device buffer and transfer. OFF: allocate struct ptr on host
-option(ESTIM_NAN "estimate if primitive variable(rho,yi,P,T) is nan or <0 or inf." OFF)
+option(ESTIM_NAN "estimate if primitive variable(rho,yi,P,T) is nan or <0 or inf." ON)
 option(ERROR_OUT "if out intermediate variables for Flux ((b1,b3,zi)[convention],Di[visc],...)." OFF)
 option(ERROR_PATCH_PRI "if patch primitive varibales using Roe average method, destruct physic fluid flow." OFF)
 
@@ -78,24 +78,6 @@ ELSEIF(ARTIFICIAL_VISC_TYPE STREQUAL "GLF")
   add_compile_options(-DArtificial_type=3)
 ENDIF()
 
-IF(DIM_X)
-  add_compile_options(-DDIM_X=1)
-ELSE(DIM_X)
-  add_compile_options(-DDIM_X=0)
-ENDIF(DIM_X)
-
-IF(DIM_Y)
-  add_compile_options(-DDIM_Y=1)
-ELSE(DIM_Y)
-  add_compile_options(-DDIM_Y=0)
-ENDIF(DIM_Y)
-
-IF(DIM_Z)
-  add_compile_options(-DDIM_Z=1)
-ELSE(DIM_Z)
-  add_compile_options(-DDIM_Z=0)
-ENDIF(DIM_Z)
-
 IF(Visc)
   add_compile_options(-DVisc=1)
 
@@ -108,9 +90,22 @@ IF(Visc)
   ENDIF(Visc_Diffu)
 ENDIF(Visc)
 
-# MPI libs
+# =======================================================
+# #### add external libs
+# =======================================================
+include_directories(BEFORE
+	${CMAKE_SOURCE_DIR}/external)
+
+## MPI libs
 IF(USE_MPI)
   include(init_mpi)
-  include_directories(AFTER ${CMAKE_SOURCE_DIR})
-  add_subdirectory(mpiUtils)
+  add_subdirectory(external/mpiUtils)
 ENDIF() # sources
+## timer libs
+add_subdirectory(external/timer)
+## strsplit libs
+add_subdirectory(external/strsplit)
+## ndassign libs
+add_subdirectory(external/ndassign)
+## kernel attribute libs
+add_subdirectory(external/kattribute)

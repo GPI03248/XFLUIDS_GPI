@@ -39,13 +39,6 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	auto global_ndrange_y = range<3>(bl.X_inner, bl.Y_inner + 1, bl.Z_inner);
 	auto global_ndrange_z = range<3>(bl.X_inner, bl.Y_inner, bl.Z_inner + 1);
 
-	auto global_ndrange_max_eigen_tmp = range<3>(bl.Zmax, bl.Ymax, bl.Xmax);
-	auto local_ndrange_eigen_tmp = range<3>(bl.dim_block_z, bl.dim_block_y, bl.dim_block_x);
-
-	// std::cout << "-----------------------TEST BlockSize-----------------------------------" << "\n";
-	// std::cout << "dim_block_x: " << bl.dim_block_x << ", dim_block_y:" << bl.dim_block_y << "\n";
-	// std::cout << "-----------------------TEST BlockSize-----------------------------------" << "\n";
-
 	Assign temk(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetLocalEigen");
 	{ // get local eigen
 		runtime_lu_astart = std::chrono::high_resolution_clock::now();
@@ -58,14 +51,10 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			// proceed at x directiom and get F-flux terms at node wall
 
 			q.submit([&](sycl::handler &h) {																					   //
-				// h.parallel_for(sycl::nd_range<3>(temk.global_nd(global_ndrange_max), temk.local_nd), [=](sycl::nd_item<3> index) { //
-				h.parallel_for(sycl::nd_range<3>(global_ndrange_max_eigen_tmp, local_ndrange_eigen_tmp), [=](sycl::nd_item<3> index){
-					// int i = index.get_global_id(0);
-					// int j = index.get_global_id(1);
-					// int k = index.get_global_id(2);
-					int i = index.get_global_id(2);
-    				int j = index.get_global_id(1);
-    				int k = index.get_global_id(0);
+				h.parallel_for(sycl::nd_range<3>(temk.global_nd(global_ndrange_max), temk.local_nd), [=](sycl::nd_item<3> index) { //
+					int i = index.get_global_id(0);
+					int j = index.get_global_id(1);
+					int k = index.get_global_id(2);
 					GetLocalEigen(i, j, k, ms, _DF(1.0), _DF(0.0), _DF(0.0), eigen_local_x, u, v, w, c);
 				});
 			});
@@ -84,14 +73,10 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			// proceed at y directiom and get G-flux terms at node wall
 
 			q.submit([&](sycl::handler &h) {																					   //
-				// h.parallel_for(sycl::nd_range<3>(temk.global_nd(global_ndrange_max), temk.local_nd), [=](sycl::nd_item<3> index) { //
-				h.parallel_for(sycl::nd_range<3>(global_ndrange_max_eigen_tmp, local_ndrange_eigen_tmp), [=](sycl::nd_item<3> index){
-					// int i = index.get_global_id(0);
-					// int j = index.get_global_id(1);
-					// int k = index.get_global_id(2);
-					int i = index.get_global_id(2);
+				h.parallel_for(sycl::nd_range<3>(temk.global_nd(global_ndrange_max), temk.local_nd), [=](sycl::nd_item<3> index) { //
+					int i = index.get_global_id(0);
 					int j = index.get_global_id(1);
-					int k = index.get_global_id(0);
+					int k = index.get_global_id(2);
 					GetLocalEigen(i, j, k, ms, _DF(0.0), _DF(1.0), _DF(0.0), eigen_local_y, u, v, w, c);
 				});
 			});
@@ -110,14 +95,10 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			// proceed at y directiom and get G-flux terms at node wall
 
 			q.submit([&](sycl::handler &h) {																					   //
-				// h.parallel_for(sycl::nd_range<3>(temk.global_nd(global_ndrange_max), temk.local_nd), [=](sycl::nd_item<3> index) { //
-				h.parallel_for(sycl::nd_range<3>(global_ndrange_max_eigen_tmp, local_ndrange_eigen_tmp), [=](sycl::nd_item<3> index){
-					// int i = index.get_global_id(0);
-					// int j = index.get_global_id(1);
-					// int k = index.get_global_id(2);
-					int i = index.get_global_id(2);
+				h.parallel_for(sycl::nd_range<3>(temk.global_nd(global_ndrange_max), temk.local_nd), [=](sycl::nd_item<3> index) { //
+					int i = index.get_global_id(0);
 					int j = index.get_global_id(1);
-					int k = index.get_global_id(0);
+					int k = index.get_global_id(2);
 					GetLocalEigen(i, j, k, ms, _DF(0.0), _DF(0.0), _DF(1.0), eigen_local_z, u, v, w, c);
 				});
 			});
@@ -137,7 +118,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			for (size_t nn = 0; nn < Emax; nn++)
 			{
 				q.submit([&](sycl::handler &h) {																											//
-					auto reduction_max_eigen = sycl_reduction_max(eigen_block_x[nn]);																		// reduction(&(eigen_block_x[nn]), sycl::maximum<real_t>());
+					auto reduction_max_eigen = sycl_reduction_max(eigen_block_x[nn]);																		//
 					h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), reduction_max_eigen, [=](nd_item<3> index, auto &temp_max_eigen) { //
 						int i = index.get_global_id(0);
 						int j = index.get_global_id(1);
@@ -156,7 +137,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			for (size_t nn = 0; nn < Emax; nn++)
 			{
 				q.submit([&](sycl::handler &h) {																											//
-					auto reduction_max_eigen = sycl_reduction_max(eigen_block_y[nn]);																		// reduction(&(eigen_block_y[nn]), sycl::maximum<real_t>());
+					auto reduction_max_eigen = sycl_reduction_max(eigen_block_y[nn]);																		//
 					h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), reduction_max_eigen, [=](nd_item<3> index, auto &temp_max_eigen) { //
 						int i = index.get_global_id(0);
 						int j = index.get_global_id(1);
@@ -175,7 +156,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			for (size_t nn = 0; nn < Emax; nn++)
 			{
 				q.submit([&](sycl::handler &h) {																											//
-					auto reduction_max_eigen = sycl_reduction_max(eigen_block_z[nn]);																		// reduction(&(eigen_block_z[nn]), sycl::maximum<real_t>());
+					auto reduction_max_eigen = sycl_reduction_max(eigen_block_z[nn]);																		//
 					h.parallel_for(sycl::nd_range<3>(global_ndrange_max, local_ndrange), reduction_max_eigen, [=](nd_item<3> index, auto &temp_max_eigen) { //
 						int i = index.get_global_id(0);
 						int j = index.get_global_id(1);
@@ -244,17 +225,11 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			ReconstructFluxXVendorWrapper<<<temfwx.global_gd(global_ndrange_x), temfwx.local_blk>>>(bl.dx, ms, thermal, UI, FluxF, FluxFw, eigen_local_x, eigen_l, eigen_r, fdata.b1x,
 																									fdata.b3x, fdata.c2x, fdata.zix, p, rho, u, v, w, fdata.y, T, H, eigen_block_x);
 #else
-
-			auto local_ndrange_Xtmp = range<3>(bl.dim_block_z, bl.dim_block_y, bl.dim_block_x);
-			auto global_ndrange_x_tmp = range<3>(bl.Z_inner, bl.Y_inner, bl.X_inner+local_ndrange_Xtmp[2]);
-			// h.parallel_for(sycl::nd_range<3>(global_ndrange_x_tmp, local_ndrange_Xtmp), [=](sycl::nd_item<3> index)
 			q.submit([&](sycl::handler &h) {																						 //
-				// h.parallel_for(sycl::nd_range<3>(temfwx.global_nd(global_ndrange_x), temfwx.local_nd), [=](sycl::nd_item<3> index)
-				h.parallel_for(sycl::nd_range<3>(global_ndrange_x_tmp, local_ndrange_Xtmp), [=](sycl::nd_item<3> index)
-				[[sycl::reqd_sub_group_size(32)]]{ //
-					int i = index.get_global_id(2) + ms.Bwidth_X - 1;
+				h.parallel_for(sycl::nd_range<3>(temfwx.global_nd(global_ndrange_x), temfwx.local_nd), [=](sycl::nd_item<3> index) { //
+					int i = index.get_global_id(0) + ms.Bwidth_X - 1;
 					int j = index.get_global_id(1) + ms.Bwidth_Y;
-					int k = index.get_global_id(0) + ms.Bwidth_Z;
+					int k = index.get_global_id(2) + ms.Bwidth_Z;
 					ReconstructFluxX(i, j, k, bl.dx, ms, thermal, UI, FluxF, FluxFw, eigen_local_x, eigen_l, eigen_r,
 									 fdata.b1x, fdata.b3x, fdata.c2x, fdata.zix, p, rho, u, v, w, fdata.y, T, H, eigen_block_x);
 				});
@@ -284,17 +259,11 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 			ReconstructFluxYVendorWrapper<<<temfwy.global_gd(global_ndrange_y), temfwy.local_blk>>>(bl.dy, ms, thermal, UI, FluxG, FluxGw, eigen_local_y, eigen_l, eigen_r, fdata.b1y,
 																									fdata.b3y, fdata.c2y, fdata.ziy, p, rho, u, v, w, fdata.y, T, H, eigen_block_y);
 #else
-
-			auto local_ndrange_Ytmp = range<3>(bl.dim_block_z, bl.dim_block_y, bl.dim_block_x);
-			auto global_ndrange_y_tmp = range<3>(bl.Z_inner, bl.Y_inner+local_ndrange_Ytmp[1], bl.X_inner);
-			// h.parallel_for(sycl::nd_range<3>(global_ndrange_y_tmp, local_ndrange_Ytmp), [=](sycl::nd_item<3> index)
 			q.submit([&](sycl::handler &h) {																						 //
-				// h.parallel_for(sycl::nd_range<3>(temfwy.global_nd(global_ndrange_y), temfwy.local_nd), [=](sycl::nd_item<3> index) 
-				h.parallel_for(sycl::nd_range<3>(global_ndrange_y_tmp, local_ndrange_Ytmp), [=](sycl::nd_item<3> index)
-				[[sycl::reqd_sub_group_size(32)]]{ //
-					int i = index.get_global_id(2) + ms.Bwidth_X;
+				h.parallel_for(sycl::nd_range<3>(temfwy.global_nd(global_ndrange_y), temfwy.local_nd), [=](sycl::nd_item<3> index) { //
+					int i = index.get_global_id(0) + ms.Bwidth_X;
 					int j = index.get_global_id(1) + ms.Bwidth_Y - 1;
-					int k = index.get_global_id(0) + ms.Bwidth_Z;
+					int k = index.get_global_id(2) + ms.Bwidth_Z;
 					ReconstructFluxY(i, j, k, bl.dy, ms, thermal, UI, FluxG, FluxGw, eigen_local_y, eigen_l, eigen_r,
 									 fdata.b1y, fdata.b3y, fdata.c2y, fdata.ziy, p, rho, u, v, w, fdata.y, T, H, eigen_block_y);
 				});
@@ -325,8 +294,7 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 																									fdata.b3z, fdata.c2z, fdata.ziz, p, rho, u, v, w, fdata.y, T, H, eigen_block_z);
 #else
 			q.submit([&](sycl::handler &h) {																						 //
-				h.parallel_for(sycl::nd_range<3>(temfwz.global_nd(global_ndrange_z), temfwz.local_nd), [=](sycl::nd_item<3> index) 
-				[[sycl::reqd_sub_group_size(32)]]{ //
+				h.parallel_for(sycl::nd_range<3>(temfwz.global_nd(global_ndrange_z), temfwz.local_nd), [=](sycl::nd_item<3> index) { //
 					int i = index.get_global_id(0) + ms.Bwidth_X;
 					int j = index.get_global_id(1) + ms.Bwidth_Y;
 					int k = index.get_global_id(2) + ms.Bwidth_Z - 1;
@@ -448,160 +416,163 @@ std::vector<float> GetLU(sycl::queue &q, Setup &setup, Block bl, BConditions BCs
 	// 	// 	q.memcpy(fdata.preFwz, FluxHw, cellsize);
 	// 	// 	q.wait();
 
-#if Visc // NOTE: calculate and add viscous wall Flux to physical convection Flux
-	/* Viscous LU including physical visc(切应力),Visc_Heat transfer(传热), mass Diffusion(质量扩散)
+	/**
+	 * NOTE: calculate and add viscous wall Flux to physical convection Flux
+	 * Viscous LU including physical visc(切应力),Visc_Heat transfer(传热), mass Diffusion(质量扩散)
 	 * Physical Visc must be included, Visc_Heat is alternative, Visc_Diffu depends on compent
 	 */
-
-	runtime_lu_astart = std::chrono::high_resolution_clock::now();
-	GetCellCenterDerivative(q, bl, fdata, BCs); // get Vortex
-	runtime_velDeri = OutThisTime(runtime_lu_astart);
-
-	real_t *va = fdata.viscosity_aver;
-	real_t *tca = fdata.thermal_conduct_aver;
-	real_t *Da = fdata.Dkm_aver;
-	real_t *hi = fdata.hi;
-
-	Assign temcoeff(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "Gettransport_coeff_aver");
-	runtime_lu_astart = std::chrono::high_resolution_clock::now();
-#if __VENDOR_SUBMIT__
-	CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
-	static bool dummv = (GetKernelAttributes((const void *)Gettransport_coeff_averVendorWrapper, "Gettransport_coeff_averVendorWrapper"), true); // call only once
-	Gettransport_coeff_averVendorWrapper<<<temcoeff.global_gd(global_ndrange_max), temcoeff.local_blk>>>(bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T, fdata.Ertemp1, fdata.Ertemp2);
-	CheckGPUErrors(vendorDeviceSynchronize());
-#else
-	q.submit([&](sycl::handler &h) {																								//
-		 h.parallel_for(sycl::nd_range<3>(temcoeff.global_nd(global_ndrange_max), temcoeff.local_nd), [=](sycl::nd_item<3> index) { //
-			 int i = index.get_global_id(0);
-			 int j = index.get_global_id(1);
-			 int k = index.get_global_id(2);
-			 Gettransport_coeff_aver(i, j, k, bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T, fdata.Ertemp1, fdata.Ertemp2);
-		 });
-	 })
-		.wait();
-#endif
-	runtime_transport = OutThisTime(runtime_lu_astart);
-	if (Setup::adv_push)
-		Setup::adv_nd[Setup::adv_id].push_back(temcoeff.Time(runtime_transport));
-
-// // get visc robust limiter
-#if Visc_Diffu
-	for (size_t nn = 0; nn < NUM_SPECIES; nn++)
+	if (Visc)
 	{
-		yi_min[nn] = _DF(0.0), yi_max[nn] = _DF(0.0);
-		Dim_min[nn] = _DF(0.0), Dim_max[nn] = _DF(0.0);
-		auto Yi_min = sycl_reduction_min(yi_min[nn]);
-		auto Yi_max = sycl_reduction_max(yi_max[nn]);
-		auto Dkm_min = sycl_reduction_min(Dim_min[nn]);
-		auto Dkm_max = sycl_reduction_max(Dim_max[nn]);
-
-		Assign temDim(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetYiDimMaxMin[" + std::to_string(nn) + "]");
 		runtime_lu_astart = std::chrono::high_resolution_clock::now();
-		q.submit([&](sycl::handler &h) { //
-			 h.parallel_for(sycl::nd_range<3>(global_ndrange_inner, local_ndrange), Yi_min, Yi_max, Dkm_min, Dkm_max,
-							[=](nd_item<3> index, auto &temp_Ymin, auto &temp_Ymax, auto &temp_Dmin, auto &temp_Dmax) { //
-								int i = index.get_global_id(0) + ms.Bwidth_X;
-								int j = index.get_global_id(1) + ms.Bwidth_Y;
-								int k = index.get_global_id(2) + ms.Bwidth_Z;
-								int id = ms.Xmax * ms.Ymax * k + ms.Xmax * j + i;
-								real_t *yi = &(fdata.y[NUM_SPECIES * id]);
-								temp_Ymin.combine(yi[nn]), temp_Ymax.combine(yi[nn]);
-								// real_t *Dkm = &(Da[NUM_SPECIES * id]);
-								// temp_Dmin.combine(Dkm[nn]), temp_Dmax.combine(Dkm[nn]);
-								//
-							});
+		GetCellCenterDerivative(q, bl, fdata, BCs); // get Vortex
+		runtime_velDeri = OutThisTime(runtime_lu_astart);
+
+		real_t *va = fdata.viscosity_aver;
+		real_t *tca = fdata.thermal_conduct_aver;
+		real_t *Da = fdata.Dkm_aver;
+		real_t *hi = fdata.hi;
+
+		Assign temcoeff(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "Gettransport_coeff_aver");
+		runtime_lu_astart = std::chrono::high_resolution_clock::now();
+#if __VENDOR_SUBMIT__
+		CheckGPUErrors(vendorSetDevice(setup.DeviceSelect[2]));
+		static bool dummv = (GetKernelAttributes((const void *)Gettransport_coeff_averVendorWrapper, "Gettransport_coeff_averVendorWrapper"), true); // call only once
+		Gettransport_coeff_averVendorWrapper<<<temcoeff.global_gd(global_ndrange_max), temcoeff.local_blk>>>(bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T, fdata.Ertemp1, fdata.Ertemp2);
+		CheckGPUErrors(vendorDeviceSynchronize());
+#else
+		q.submit([&](sycl::handler &h) {																								//
+			 h.parallel_for(sycl::nd_range<3>(temcoeff.global_nd(global_ndrange_max), temcoeff.local_nd), [=](sycl::nd_item<3> index) { //
+				 int i = index.get_global_id(0);
+				 int j = index.get_global_id(1);
+				 int k = index.get_global_id(2);
+				 Gettransport_coeff_aver(i, j, k, bl, thermal, va, tca, Da, fdata.y, hi, rho, p, T, fdata.Ertemp1, fdata.Ertemp2);
+			 });
 		 })
 			.wait();
+#endif
+		runtime_transport = OutThisTime(runtime_lu_astart);
 		if (Setup::adv_push)
-			Setup::adv_nd[Setup::adv_id].push_back(temDim.Time(OutThisTime(runtime_lu_astart)));
+			Setup::adv_nd[Setup::adv_id].push_back(temcoeff.Time(runtime_transport));
+
+		// // get visc robust limiter
+		if (Visc_Diffu)
+		{
+			for (size_t nn = 0; nn < NUM_SPECIES; nn++)
+			{
+				yi_min[nn] = _DF(0.0), yi_max[nn] = _DF(0.0);
+				Dim_min[nn] = _DF(0.0), Dim_max[nn] = _DF(0.0);
+				auto Yi_min = sycl_reduction_min(yi_min[nn]);
+				auto Yi_max = sycl_reduction_max(yi_max[nn]);
+				auto Dkm_min = sycl_reduction_min(Dim_min[nn]);
+				auto Dkm_max = sycl_reduction_max(Dim_max[nn]);
+
+				Assign temDim(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetYiDimMaxMin[" + std::to_string(nn) + "]");
+				runtime_lu_astart = std::chrono::high_resolution_clock::now();
+				q.submit([&](sycl::handler &h) { //
+					 h.parallel_for(sycl::nd_range<3>(global_ndrange_inner, local_ndrange), Yi_min, Yi_max, Dkm_min, Dkm_max,
+									[=](nd_item<3> index, auto &temp_Ymin, auto &temp_Ymax, auto &temp_Dmin, auto &temp_Dmax) { //
+										int i = index.get_global_id(0) + ms.Bwidth_X;
+										int j = index.get_global_id(1) + ms.Bwidth_Y;
+										int k = index.get_global_id(2) + ms.Bwidth_Z;
+										int id = ms.Xmax * ms.Ymax * k + ms.Xmax * j + i;
+										real_t *yi = &(fdata.y[NUM_SPECIES * id]);
+										temp_Ymin.combine(yi[nn]), temp_Ymax.combine(yi[nn]);
+										// real_t *Dkm = &(Da[NUM_SPECIES * id]);
+										// temp_Dmin.combine(Dkm[nn]), temp_Dmax.combine(Dkm[nn]);
+										//
+									});
+				 })
+					.wait();
+				if (Setup::adv_push)
+					Setup::adv_nd[Setup::adv_id].push_back(temDim.Time(OutThisTime(runtime_lu_astart)));
 
 #ifdef USE_MPI
-		real_t mpi_Ymin = _DF(0.0), mpi_Ymax = _DF(0.0), mpi_Dmin = _DF(0.0), mpi_Dmax = _DF(0.0);
-		setup.mpiTrans->communicator->synchronize();
-		setup.mpiTrans->communicator->allReduce(&(yi_min[nn]), &(mpi_Ymin), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
-		setup.mpiTrans->communicator->allReduce(&(yi_max[nn]), &(mpi_Ymax), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
-		// setup.mpiTrans->communicator->allReduce(&(Dim_min[nn]), &(mpi_Dmin), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
-		// setup.mpiTrans->communicator->allReduce(&(Dim_max[nn]), &(mpi_Dmax), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
-		setup.mpiTrans->communicator->synchronize();
-		yi_min[nn] = sycl::max(mpi_Ymin, _DF(0.0)), yi_max[nn] = sycl::min(mpi_Ymax, _DF(1.0));
-		Dim_min[nn] = _DF(1.0), Dim_max[nn] = _DF(1.0); // Dim_min[nn] = mpi_Dmin, Dim_max[nn] = mpi_Dmax;
-#endif													// end USE_MPI
-		yi_max[nn] -= yi_min[nn];
-		yi_max[nn] *= setup.BlSz.Yil_limiter;				// // yil limiter
-		Dim_max[nn] *= setup.BlSz.Dim_limiter * yi_max[nn]; // // Diffu_limiter=Yil_limiter*Dim_limiter
-	}
-#endif // Diffu
+				real_t mpi_Ymin = _DF(0.0), mpi_Ymax = _DF(0.0), mpi_Dmin = _DF(0.0), mpi_Dmax = _DF(0.0);
+				setup.mpiTrans->communicator->synchronize();
+				setup.mpiTrans->communicator->allReduce(&(yi_min[nn]), &(mpi_Ymin), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
+				setup.mpiTrans->communicator->allReduce(&(yi_max[nn]), &(mpi_Ymax), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+				// setup.mpiTrans->communicator->allReduce(&(Dim_min[nn]), &(mpi_Dmin), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MIN);
+				// setup.mpiTrans->communicator->allReduce(&(Dim_max[nn]), &(mpi_Dmax), 1, setup.mpiTrans->data_type, mpiUtils::MpiComm::MAX);
+				setup.mpiTrans->communicator->synchronize();
+				yi_min[nn] = sycl::max(mpi_Ymin, _DF(0.0)), yi_max[nn] = sycl::min(mpi_Ymax, _DF(1.0));
+				Dim_min[nn] = _DF(1.0), Dim_max[nn] = _DF(1.0); // Dim_min[nn] = mpi_Dmin, Dim_max[nn] = mpi_Dmax;
+#endif															// end USE_MPI
+				yi_max[nn] -= yi_min[nn];
+				yi_max[nn] *= setup.BlSz.Yil_limiter;				// // yil limiter
+				Dim_max[nn] *= setup.BlSz.Dim_limiter * yi_max[nn]; // // Diffu_limiter=Yil_limiter*Dim_limiter
+			}
+		}
 
-	// // calculate viscous Fluxes
-	Assign temvFwx(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetWallViscousFluxX");
-	runtime_lu_astart = std::chrono::high_resolution_clock::now();
-	if (bl.DimX)
-	{
-		q.submit([&](sycl::handler &h) {																									   //
-			h.parallel_for(sycl::nd_range<3>(temvFwx.global_nd(global_ndrange_x, local_ndrange), local_ndrange), [=](sycl::nd_item<3> index) { //
-				int i = index.get_global_id(0) + bl.Bwidth_X - 1;
-				int j = index.get_global_id(1) + bl.Bwidth_Y;
-				int k = index.get_global_id(2) + bl.Bwidth_Z;
-				GetWallViscousFluxX(i, j, k, bl, FluxFw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde,
-									yi_max, Dim_max, fdata.visFwx, fdata.Dim_wallx, fdata.hi_wallx, fdata.Yi_wallx, fdata.Yil_wallx);
-			});
-		}); //.wait()
-	}
+		// // calculate viscous Fluxes
+		Assign temvFwx(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetWallViscousFluxX");
+		runtime_lu_astart = std::chrono::high_resolution_clock::now();
+		if (bl.DimX)
+		{
+			q.submit([&](sycl::handler &h) {																									   //
+				h.parallel_for(sycl::nd_range<3>(temvFwx.global_nd(global_ndrange_x, local_ndrange), local_ndrange), [=](sycl::nd_item<3> index) { //
+					int i = index.get_global_id(0) + bl.Bwidth_X - 1;
+					int j = index.get_global_id(1) + bl.Bwidth_Y;
+					int k = index.get_global_id(2) + bl.Bwidth_Z;
+					GetWallViscousFluxX(i, j, k, bl, FluxFw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde,
+										yi_max, Dim_max, fdata.visFwx, fdata.Dim_wallx, fdata.hi_wallx, fdata.Yi_wallx, fdata.Yil_wallx);
+				});
+			}); //.wait()
+		}
 
-	if (Setup::adv_push || __SYNC_TIMER_)
-	{
+		if (Setup::adv_push || __SYNC_TIMER_)
+		{
+			q.wait();
+			runtime_viscx = OutThisTime(runtime_lu_astart);
+			if (Setup::adv_push)
+				Setup::adv_nd[Setup::adv_id].push_back(temvFwx.Time(runtime_viscx));
+			runtime_lu_start = std::chrono::high_resolution_clock::now();
+		}
+
+		Assign temvFwy(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetWallViscousFluxY");
+		if (bl.DimY)
+		{
+			q.submit([&](sycl::handler &h) {																									   //
+				h.parallel_for(sycl::nd_range<3>(temvFwy.global_nd(global_ndrange_y, local_ndrange), local_ndrange), [=](sycl::nd_item<3> index) { //
+					int i = index.get_global_id(0) + bl.Bwidth_X;
+					int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
+					int k = index.get_global_id(2) + bl.Bwidth_Z;
+					GetWallViscousFluxY(i, j, k, bl, FluxGw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde,
+										yi_max, Dim_max, fdata.visFwy, fdata.Dim_wally, fdata.hi_wally, fdata.Yi_wally, fdata.Yil_wally);
+				});
+			}); //.wait()
+		}
+
+		if (Setup::adv_push || __SYNC_TIMER_)
+		{
+			q.wait();
+			runtime_viscy = OutThisTime(runtime_lu_start);
+			if (Setup::adv_push)
+				Setup::adv_nd[Setup::adv_id].push_back(temvFwy.Time(runtime_viscy));
+			runtime_lu_start = std::chrono::high_resolution_clock::now();
+		}
+
+		Assign temvFwz(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetWallViscousFluxZ");
+		if (bl.DimZ)
+		{
+			q.submit([&](sycl::handler &h) {																									   //
+				h.parallel_for(sycl::nd_range<3>(temvFwz.global_nd(global_ndrange_z, local_ndrange), local_ndrange), [=](sycl::nd_item<3> index) { //
+					int i = index.get_global_id(0) + bl.Bwidth_X;
+					int j = index.get_global_id(1) + bl.Bwidth_Y;
+					int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
+					GetWallViscousFluxZ(i, j, k, bl, FluxHw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde,
+										yi_max, Dim_max, fdata.visFwz, fdata.Dim_wallz, fdata.hi_wallz, fdata.Yi_wallz, fdata.Yil_wallz);
+				});
+			}); //.wait()
+		}
 		q.wait();
-		runtime_viscx = OutThisTime(runtime_lu_astart);
-		if (Setup::adv_push)
-			Setup::adv_nd[Setup::adv_id].push_back(temvFwx.Time(runtime_viscx));
-		runtime_lu_start = std::chrono::high_resolution_clock::now();
+		if (Setup::adv_push || __SYNC_TIMER_)
+		{
+			runtime_viscz = OutThisTime(runtime_lu_start);
+			if (Setup::adv_push)
+				Setup::adv_nd[Setup::adv_id].push_back(temvFwz.Time(runtime_viscz));
+		}
+		runtime_visc = OutThisTime(runtime_lu_astart);
 	}
-
-	Assign temvFwy(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetWallViscousFluxY");
-	if (bl.DimY)
-	{
-		q.submit([&](sycl::handler &h) {																									   //
-			h.parallel_for(sycl::nd_range<3>(temvFwy.global_nd(global_ndrange_y, local_ndrange), local_ndrange), [=](sycl::nd_item<3> index) { //
-				int i = index.get_global_id(0) + bl.Bwidth_X;
-				int j = index.get_global_id(1) + bl.Bwidth_Y - 1;
-				int k = index.get_global_id(2) + bl.Bwidth_Z;
-				GetWallViscousFluxY(i, j, k, bl, FluxGw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde,
-									yi_max, Dim_max, fdata.visFwy, fdata.Dim_wally, fdata.hi_wally, fdata.Yi_wally, fdata.Yil_wally);
-			});
-		}); //.wait()
-	}
-
-	if (Setup::adv_push || __SYNC_TIMER_)
-	{
-		q.wait();
-		runtime_viscy = OutThisTime(runtime_lu_start);
-		if (Setup::adv_push)
-			Setup::adv_nd[Setup::adv_id].push_back(temvFwy.Time(runtime_viscy));
-		runtime_lu_start = std::chrono::high_resolution_clock::now();
-	}
-
-	Assign temvFwz(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "GetWallViscousFluxZ");
-	if (bl.DimZ)
-	{
-		q.submit([&](sycl::handler &h) {																									   //
-			h.parallel_for(sycl::nd_range<3>(temvFwz.global_nd(global_ndrange_z, local_ndrange), local_ndrange), [=](sycl::nd_item<3> index) { //
-				int i = index.get_global_id(0) + bl.Bwidth_X;
-				int j = index.get_global_id(1) + bl.Bwidth_Y;
-				int k = index.get_global_id(2) + bl.Bwidth_Z - 1;
-				GetWallViscousFluxZ(i, j, k, bl, FluxHw, va, tca, Da, T, rho, hi, fdata.y, u, v, w, fdata.Vde,
-									yi_max, Dim_max, fdata.visFwz, fdata.Dim_wallz, fdata.hi_wallz, fdata.Yi_wallz, fdata.Yil_wallz);
-			});
-		}); //.wait()
-	}
-	q.wait();
-	if (Setup::adv_push || __SYNC_TIMER_)
-	{
-		runtime_viscz = OutThisTime(runtime_lu_start);
-		if (Setup::adv_push)
-			Setup::adv_nd[Setup::adv_id].push_back(temvFwz.Time(runtime_viscz));
-	}
-	runtime_visc = OutThisTime(runtime_lu_astart);
-#endif // end Visc
 
 	Assign temulu(Setup::adv_nd[Setup::adv_id][Setup::sbm_id++].local_nd, "UpdateFluidLU");
 	runtime_lu_start = std::chrono::high_resolution_clock::now();

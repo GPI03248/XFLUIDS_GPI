@@ -1,7 +1,7 @@
 {
 	"run": {
-		"blockSize_x": 4,
-		"blockSize_y": 4,
+		"blockSize_x": 8,
+		"blockSize_y": 8,
 		"blockSize_z": 8,
 		"DtBlockSize": 8,
 		"nStepMax": 100000,
@@ -10,7 +10,7 @@
 		"OutBoundary": 0,
 		"OutInterval": 1000,
 		"OutTimeStamps": [
-			"100.4: {-C=X,Y,Z;-V=rho,P,T}"
+			"0.4: {-C=X,Y,Z;-V=rho,P,T}"
 		]
 	},
 	"mpi": {
@@ -19,7 +19,7 @@
 		"mz": 1,
 		"DeviceSelect": [
 			1,
-			2,
+			0,
 			0
 		]
 	},
@@ -30,8 +30,8 @@
 	"sources": {},
 	"mesh": {
 		"Resolution": [
-			3072,
-			3072,
+			400,
+			400,
 			0
 		],
 		"Boundarys": [

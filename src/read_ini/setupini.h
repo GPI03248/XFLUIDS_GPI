@@ -2,17 +2,19 @@
 
 // // global header
 #include "../include/global_setup.h"
+// //  use middleware
+#include "middle.hpp"
 // // internal header
 #include "options.hpp"
 #include "inishape/inishape.h"
 #include "settings/read_json.h"
-#include "src/ndassign/ndassign.h"
-#include "src/outformat/outformat.h"
+#include "ndassign/ndassign.h"
+#include "outformat/outformat.h"
 // // external header
 #ifdef USE_MPI
-#include "../mpiPacks/mpiPacks.h"
+#include "mpiPacks/mpiPacks.h"
 #endif
-#include "../read_grid/readgrid.h"
+#include "read_grid/readgrid.h"
 
 struct Setup
 {
@@ -26,10 +28,10 @@ public:
 	std::vector<int> DeviceSelect; // for Device counting and selecting
 
 	//--for-Running--------------------------
-	AppendParas apa;
-	std::string WorkDir;
+	AppendParas apa;	  // runtime options
 	int nStepmax;		  // running steps
 	int bytes, cellbytes; // memory allocate
+	std::string WorkDir;
 	std::vector<OutFmt> OutTimeStamps;
 
 	//--for-Mesh-----------------------------

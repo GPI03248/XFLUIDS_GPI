@@ -1,3 +1,7 @@
-### 部署在ubuntu24.04, oneapi-2024.0.0, platform: i7-12700kf+3070ti+b580，仅oneAPI版本可以运行
-### 该版本极老，在cmake时，需要删除根目录下的lib文件，再进行cmake，且该版本仍然使用"OpenSYCL"，且该版本没有cantera的相关内容
-### 将1d-diffusion算例的初始化函数替换为了eulerVortex算例的初始化，相关cmake的宏开关修改为eulerVortex算例的设置，但是文件名没有更换
+### 部署在ljl主机, ubuntu 20.04, platform: amd 5800x+3070, 仅AdaptiveCpp版本可运行
+### 代码版本为开源库XFLUIDS的89816d1 commit，有简单修改
+### 两个重要依赖，AdaptiveCpp和cantera，源码均放在external路径下，需要安装
+#### AdaptiveCpp为github 7677cf6 commit
+#### cantera为3.1.0版本
+### 相关记录以及AdaptiveCpp与cantera的源码安装参考Record.md
+### 没有添加eulerVortex算例

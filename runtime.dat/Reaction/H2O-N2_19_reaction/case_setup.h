@@ -1,7 +1,7 @@
 #pragma once
 
 #define NUM_SPECIES 9
-#define NUM_REA 21
+#define NUM_REA 19
 
 #define ZeroDTemperature 1150.0
 #define ZeroDPressure 101325.0

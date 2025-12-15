@@ -43,66 +43,16 @@ extern void InitialUFKernel(int i, int j, int k, Block bl, MaterialProperty mate
         yi[n] = thermal.species_ratio_out[n];
 
     // // hot spot
-    // real_t temp_sin = _DF(0.006) * std::sin(y*50*2*pi+50*_DF(0.25)*pi) + _DF(0.01);
-    // real_t temp_angle = y * 50 * 2 * pi + 50 * _DF(0.25) * pi;
-    // real_t temp_judge = _DF(0.006) * sycl::sin(temp_angle) + _DF(0.01);
-    // if (x <= temp_judge)
-    // {
-    //     p[id] = _DF(151987.5);
-    //     T[id] = _DF(1800.0);
-    // }
-    // else
-    // {
-    //     p[id] = _DF(8000.0);
-    //     T[id] = _DF(300.0);
-    // }
-
-    // real_t d_smooth = x - temp_judge;
-    // real_t H_smooth = _DF(0.0);
-    // real_t delta_smooth = _DF(1.5) * dx;
-    // real_t p1 = _DF(151987.5);
-    // real_t p2 = _DF(8000.0);
-    // real_t T1 = _DF(1800.0);
-    // real_t T2 = _DF(300.0);
-
-    //if (d_smooth < -delta_smooth)
-    //{
-    //    H_smooth = _DF(0.0);
-    //}
-    //else if (d_smooth > delta_smooth)
-    //{
-    //    H_smooth = _DF(1.0);
-    //}
-    //else
-    //{
-    //    H_smooth = _DF(0.5)*(1+d_smooth/delta_smooth + (1/pi)*sycl::sin((pi*d_smooth)/delta_smooth));
-    //}
-//
-  //      p[id] = p1*(1-H_smooth) + p2*H_smooth;
-    //    T[id] = T1*(1-H_smooth) + T2*H_smooth;    
-
-	if(x<_DF(0.1))
-	{
-		p[id] = _DF(151987.5);
-		T[id] = _DF(1800.0);
-	}
-	else
-	{
-		p[id] = _DF(8000.0);
-		T[id] = _DF(300.0);	
-	}
-
-
-    // if (((_DF(0.0) < x) && (x < _DF(0.002))) && (((y > _DF(0.001)) && (y < _DF(0.003))) || ((y > _DF(0.004)) && (y < _DF(0.006))) || ((y > _DF(0.007)) && (y < _DF(0.009)))))
-    // {
-        // p[id] = _DF(10132500.0);
-        // T[id] = _DF(2000.0);
-    // }
-    // else
-    // {
-        // p[id] = _DF(101325.0);
-        // T[id] = _DF(300.0);
-    // }
+    if (((_DF(0.0) < x) && (x < _DF(0.002))) && (((y > _DF(0.001)) && (y < _DF(0.003))) || ((y > _DF(0.004)) && (y < _DF(0.006))) || ((y > _DF(0.007)) && (y < _DF(0.009)))))
+    {
+        p[id] = _DF(10132500.0);
+        T[id] = _DF(2000.0);
+    }
+    else
+    {
+        p[id] = _DF(101325.0);
+        T[id] = _DF(300.0);
+    }
 
     // Get R of mixture
     real_t R = get_CopR(thermal._Wi, yi);

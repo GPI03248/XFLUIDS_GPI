@@ -1,7 +1,7 @@
 #pragma once
 
 // program headers
-#include "utils/diskinfo.hpp"
+#include "diskinfo.hpp"
 #include "read_ini/setupini.h"
 #include "include/global_setup.h"
 
@@ -15,7 +15,7 @@ class Fluid
 {
     Setup Fs;
     sycl::queue q;
-    std::string outputPrefix, file_name;
+    std::string file_name;
 
 public:
     long double MemMbSize, MPIMbSize;
@@ -51,7 +51,6 @@ public:
     void GetTheta(sycl::queue &q);
     void AllCountsPush(sycl::queue &q, const size_t Iter, const real_t time);
     // ChemQ2 or CVODE-of-Sundials in this function
-    void ZeroDimensionalFreelyFlame();
     void ODESolver(sycl::queue &q, real_t Time);
 };
 
@@ -67,7 +66,7 @@ public:
     float duration, duration_backup;
     float MPI_trans_time, MPI_BCs_time;
     float runtime_boundary, runtime_updatestates, runtime_getdt;
-    float runtime_computelu, runtime_updateu, runtime_estimatenan, runtime_rea, runtime_copy;
+    float runtime_computelu, runtime_updateu, runtime_estimatenan, runtime_rea;
 
     OutFmt OutAtThis;
     BConditions *d_BCs; // boundary condition indicators
