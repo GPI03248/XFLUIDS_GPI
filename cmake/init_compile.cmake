@@ -5,7 +5,7 @@ ENDIF()
 # // =======================================================
 # #### about external libs: boost
 SET(EXTERNAL_BOOST_ROOT ${CMAKE_SOURCE_DIR}/external/install/boost)
-SET(EXTERNAL_CANTERA_ROOT ${CMAKE_SOURCE_DIR}/external/install/cantera)
+# SET(EXTERNAL_CANTERA_ROOT ${CMAKE_SOURCE_DIR}/external/install/cantera)
 # // =======================================================
 IF(NOT BOOST_ROOT)
 	set(BOOST_ROOT "$ENV{BOOST_ROOT}")
@@ -31,49 +31,49 @@ ENDIF()
 # // =======================================================
 # Modified by gpi:
 # Force the script to use the CANTERA_ROOT logic by pre-setting the result to NOTFOUND
-set(cantera "cantera-NOTFOUND" CACHE FILEPATH "Force cantera lookup to use CANTERA_ROOT")
+# set(cantera "cantera-NOTFOUND" CACHE FILEPATH "Force cantera lookup to use CANTERA_ROOT")
 # find_library(cantera NAMES libcantera.so) # <-- Disabled
-IF(("${cantera}" STREQUAL "cantera-NOTFOUND"))
-	IF(NOT CANTERA_ROOT)
-		set(CANTERA_ROOT "$ENV{CANTERA_ROOT}")
-	ENDIF()
-	find_library(cantera NAMES libcantera_shared.so HINTS "${CANTERA_ROOT}/lib" "${EXTERNAL_CANTERA_ROOT}/${CMAKE_BUILD_TYPE}/lib")
-	IF(("${cantera}" STREQUAL "cantera-NOTFOUND"))
-		set(CONDA_PATH "$ENV{CONDA_PREFIX}")
-		IF(NOT CONDA_PATH)
-			message(FATAL_ERROR "Compiling Package \"cantera\" error without conda environment, please activate conda environment")
-		ENDIF()
-		message(STATUS "build cantera libs located: ${CANTERA_ROOT}")
-		EXECUTE_PROCESS(COMMAND bash ${CMAKE_SOURCE_DIR}/scripts/build_cantera.sh ${CONDA_PATH} ${CMAKE_BUILD_TYPE})
-		set(CANTERA_ROOT ${EXTERNAL_CANTERA_ROOT}/${CMAKE_BUILD_TYPE})
-		message(STATUS "build cantera libs located: ${CANTERA_ROOT}")
-		find_library(cantera NAMES libcantera_shared.so HINTS "${CANTERA_ROOT}/lib")
-		set(SUNDIALS_FOUND ON)
-	ENDIF()
-ELSE()
-	set(CANTERA_ROOT "/usr")
-	find_package(SUNDIALS)
+# IF(("${cantera}" STREQUAL "cantera-NOTFOUND"))
+	# IF(NOT CANTERA_ROOT)
+		# set(CANTERA_ROOT "$ENV{CANTERA_ROOT}")
+	# ENDIF()
+	# find_library(cantera NAMES libcantera_shared.so HINTS "${CANTERA_ROOT}/lib" "${EXTERNAL_CANTERA_ROOT}/${CMAKE_BUILD_TYPE}/lib")
+	# IF(("${cantera}" STREQUAL "cantera-NOTFOUND"))
+		# set(CONDA_PATH "$ENV{CONDA_PREFIX}")
+		# IF(NOT CONDA_PATH)
+			# message(FATAL_ERROR "Compiling Package \"cantera\" error without conda environment, please activate conda environment")
+		# ENDIF()
+		# message(STATUS "build cantera libs located: ${CANTERA_ROOT}")
+		# EXECUTE_PROCESS(COMMAND bash ${CMAKE_SOURCE_DIR}/scripts/build_cantera.sh ${CONDA_PATH} ${CMAKE_BUILD_TYPE})
+		# set(CANTERA_ROOT ${EXTERNAL_CANTERA_ROOT}/${CMAKE_BUILD_TYPE})
+		# message(STATUS "build cantera libs located: ${CANTERA_ROOT}")
+		# find_library(cantera NAMES libcantera_shared.so HINTS "${CANTERA_ROOT}/lib")
+		# set(SUNDIALS_FOUND ON)
+	# ENDIF()
+# ELSE()
+	# set(CANTERA_ROOT "/usr")
+	# find_package(SUNDIALS)
 # remove 	find_package(fmt)
-ENDIF()
+# ENDIF()
 # add 	find_package(fmt)
-find_package(fmt)
+# find_package(fmt)
 
-include_directories(
-	"${CANTERA_ROOT}/include"
-	"${CANTERA_ROOT}/include/cantera/ext")
+# include_directories(
+	# "${CANTERA_ROOT}/include"
+	# "${CANTERA_ROOT}/include/cantera/ext")
 # string(REGEX REPLACE "/lib/libcantera_shared.so" "/" CANTERA_ROOT "${cantera}")
-message(STATUS "Find cantera headers located: ${CANTERA_ROOT}/include/cantera")
-message(STATUS "Find cantera libs: ${cantera}")
-if(SUNDIALS_FOUND)
-	message(STATUS "Find Package \"sundials\": ${SUNDIALS_DIR}")
-else()
-	message(WARNING "May occur errors without sundials against with cantera")
-endif()
-if(fmt_FOUND)
-	message(STATUS "Find Package \"fmt\": ${SUNDIALS_DIR}")
-else()
-	message(WARNING "May occur errors without fmt against with cantera")
-endif()
+# message(STATUS "Find cantera headers located: ${CANTERA_ROOT}/include/cantera")
+# message(STATUS "Find cantera libs: ${cantera}")
+# if(SUNDIALS_FOUND)
+	# message(STATUS "Find Package \"sundials\": ${SUNDIALS_DIR}")
+# else()
+	# message(WARNING "May occur errors without sundials against with cantera")
+# endif()
+# if(fmt_FOUND)
+	# message(STATUS "Find Package \"fmt\": ${SUNDIALS_DIR}")
+# else()
+	# message(WARNING "May occur errors without fmt against with cantera")
+# endif()
 
 # // =======================================================
 IF(SYCL_COMPILE_SYSTEM STREQUAL "ACPP")
@@ -140,15 +140,12 @@ ELSEIF(SYCL_COMPILE_SYSTEM STREQUAL "oneAPI")
 	# // =======================================================
 	add_compile_options(-DDEFINED_ONEAPI)
     set(BOOST_CXX "OFF") # use boost c++ library or std internal library
-	set(CMAKE_CXX_COMPILER "clang++") # for Intel oneAPI compiling system
+	set(CMAKE_CXX_COMPILER "clang++") #clang++ # for Intel oneAPI compiling system
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
 
-    # --- 【关键修改】禁用 fmt 库的本地化功能 ---
-    # 添加编译定义，禁用 fmt 库的本地化支持，从而避免包含有问题的 <locale> 头文件
     add_compile_options(-DFMT_LOCALE=0)
     
     message(STATUS "oneAPI: Disabling fmt's locale support to avoid libstdc++ conflicts.")
-    # --- 关键修改结束 ---
 
   	IF((SelectDv STREQUAL "omp") OR(SelectDv STREQUAL "host"))
 		set(SelectDv "host")
