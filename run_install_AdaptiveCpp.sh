@@ -1,215 +1,229 @@
 #!/bin/bash
-set -e  # Stop on error
+# ==============================================================================
+# Script Name: run_install_AdaptiveCpp.sh
+# Description: Automated installation script for XFLUIDS dependencies (AdaptiveCpp version).
+#              Supports NVIDIA (CUDA), AMD (ROCm), and Intel (Level Zero/OpenCL).
+#              Includes Miniconda, LLVM 16, Boost 1.83, and AdaptiveCpp.
+# Author:      XFLUIDS Team
+# ==============================================================================
 
-# ================= Configuration =================
+set -e  # Exit immediately if a command exits with a non-zero status
+
+# ================= Configuration & Colors =================
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[0;33m'
+NC='\033[0m'      # No Color
+
 PROJECT_ROOT=$(cd "$(dirname "$0")" && pwd)
 EXTERNAL_DIR="$PROJECT_ROOT/external"
-PKG_DIR="$EXTERNAL_DIR/pkgs"
+DOWNLOAD_DIR="$EXTERNAL_DIR/downloads"
 INSTALL_DIR="$EXTERNAL_DIR/install"
 LOG_DIR="$EXTERNAL_DIR/logs"
-SRC_ACPP="$EXTERNAL_DIR/AdaptiveCpp"
-SRC_CANTERA="$EXTERNAL_DIR/cantera"
 
-PKG_BOOST_TAR="$PKG_DIR/boost-1.83.0.tar.xz"
-PKG_CONDA_SH="$PKG_DIR/Miniconda3-latest-Linux-x86_64.sh"
+# URLs
+URL_BASE="https://github.com/GPI03248/XFLUIDS_GPI/releases/download/deps_AdaptiveCpp"
+URL_ACPP_SRC="$URL_BASE/AdaptiveCpp_source.tar.gz"
+URL_BOOST="$URL_BASE/boost-1.83.0.tar.xz"
+URL_CONDA="$URL_BASE/Miniconda3-latest-Linux-x86_64.sh"
 
-DIR_CONDA="$INSTALL_DIR/miniconda"
-DIR_BOOST="$INSTALL_DIR/boost"
-DIR_ACPP="$INSTALL_DIR/AdaptiveCpp"
-DIR_CANTERA="$INSTALL_DIR/cantera"
+# SHA256 Checksums (User Provided & Verified)
+SHA_ACPP="cf036ed766b63b36e737aa92dfdd0306ed5ece76fb5b0c410cd468094d6c0b89"
+SHA_BOOST="c5a0688e1f0c05f354bbd0b32244d36085d9ffc9f932e8a18983a9908096f614"
+SHA_CONDA="e0b10e050e8928e2eb9aad2c522ee3b5d31d30048b8a9997663a8a460d538cef"
 
+# Filenames
+FILE_ACPP_SRC="AdaptiveCpp_source.tar.gz"
+FILE_BOOST="boost-1.83.0.tar.xz"
+FILE_CONDA="miniconda.sh"
 ENV_NAME="XFLUIDS"
 
-# ================ Initialize Directories =================
+# ================= Initialization =================
+echo -e "${YELLOW}>>> [Init] Resetting installation directories (Keeping downloads)...${NC}"
 rm -rf "$INSTALL_DIR" "$LOG_DIR"
-mkdir -p "$INSTALL_DIR" "$LOG_DIR"
+mkdir -p "$DOWNLOAD_DIR" "$INSTALL_DIR" "$LOG_DIR"
 
-echo ">>> Start installation (log_dir: $LOG_DIR)"
+echo -e "${GREEN}>>> [Init] Initializing AdaptiveCpp Environment Installation...${NC}"
+echo "    Log directory: $LOG_DIR"
 
-# ================= 1. Find CUDA =================
-echo "[0/5] Checking CUDA..."
-CUDA_PATH=""
-if [ -n "$CUDA_HOME" ]; then 
-    CUDA_PATH="$CUDA_HOME"
-elif command -v nvcc >/dev/null; then
-    CUDA_PATH=$(dirname $(dirname $(readlink -f $(command -v nvcc))))
-elif [ -d "/usr/local/cuda" ]; then
-    CUDA_PATH="/usr/local/cuda"
+# ================= Helper Function: Robust Download =================
+LOG_DOWNLOAD_STATUS="$LOG_DIR/0_download_status.log"
+
+download_file() {
+    local url=$1; local output=$2; local expected_sha=$3; local filename=$(basename "$output")
+    echo -n "    Checking $filename ... "
+    if [ -f "$output" ]; then
+        local current_sha=$(sha256sum "$output" | awk '{print $1}')
+        if [ "$current_sha" == "$expected_sha" ]; then
+            echo -e "${GREEN}[OK] Verified (Skipping Download)${NC}"; return 0
+        fi
+        rm -f "$output"
+    fi
+    echo "    Downloading from source..."
+    if ! command -v curl >/dev/null 2>&1; then
+        echo -e "${RED}Error: 'curl' not found.${NC}"; exit 1
+    fi
+    if curl -L -C - --retry 5 --retry-delay 2 --connect-timeout 10 --fail --progress-bar -o "$output" "$url"; then
+        echo "[$(date)] SUCCESS: Downloaded $filename" >> "$LOG_DOWNLOAD_STATUS"
+        local new_sha=$(sha256sum "$output" | awk '{print $1}')
+        if [ "$new_sha" != "$expected_sha" ]; then
+             echo -e "${RED}Error: SHA256 mismatch for $filename${NC}"; exit 1
+        fi
+    else
+        echo -e "${RED}Error: Failed to download $filename.${NC}"; exit 1
+    fi
+}
+
+# ================= Step 1: Download Dependencies =================
+echo -e "${GREEN}[Step 1/7] Verifying and Downloading Dependencies...${NC}"
+download_file "$URL_CONDA" "$DOWNLOAD_DIR/$FILE_CONDA" "$SHA_CONDA"
+download_file "$URL_BOOST" "$DOWNLOAD_DIR/$FILE_BOOST" "$SHA_BOOST"
+download_file "$URL_ACPP_SRC" "$DOWNLOAD_DIR/$FILE_ACPP_SRC" "$SHA_ACPP"
+chmod +x "$DOWNLOAD_DIR/$FILE_CONDA"
+
+# ================= Step 2: GPU Backend Detection =================
+echo -e "${GREEN}[Step 2/7] Detecting System GPU Backend...${NC}"
+BACKEND_FLAG=""; GPU_TOOLKIT_ROOT=""; EXTRA_LINK_FLAGS=""
+
+if command -v nvcc >/dev/null 2>&1 || [ -d "/usr/local/cuda" ]; then
+    echo -e "      ${BLUE}Detected: NVIDIA CUDA${NC}"
+    BACKEND_FLAG="-DWITH_CUDA_BACKEND=ON -DWITH_ROCM_BACKEND=OFF -DWITH_LEVEL_ZERO_BACKEND=OFF -DWITH_OPENCL_BACKEND=OFF"
+    GPU_TOOLKIT_ROOT="${CUDA_HOME:-/usr/local/cuda}"
+    [ ! -d "$GPU_TOOLKIT_ROOT" ] && GPU_TOOLKIT_ROOT=$(dirname $(dirname $(readlink -f $(command -v nvcc))))
+    echo "      CUDA Root: $GPU_TOOLKIT_ROOT"
+elif [ -d "/opt/rocm" ] || command -v hipcc >/dev/null 2>&1; then
+    echo -e "      ${BLUE}Detected: AMD ROCm${NC}"
+    BACKEND_FLAG="-DWITH_CUDA_BACKEND=OFF -DWITH_ROCM_BACKEND=ON -DWITH_LEVEL_ZERO_BACKEND=OFF -DWITH_OPENCL_BACKEND=OFF"
+    GPU_TOOLKIT_ROOT="/opt/rocm"
+    echo "      ROCm Root: $GPU_TOOLKIT_ROOT"
+    # [Fix] Linker path for hipRTC and system libnuma
+    EXTRA_LINK_FLAGS="-Wl,-rpath,$GPU_TOOLKIT_ROOT/lib -L$GPU_TOOLKIT_ROOT/lib -L/usr/lib/x86_64-linux-gnu"
+else
+    echo -e "      ${YELLOW}No NVIDIA or AMD GPU detected. Assuming Intel GPU environment.${NC}"
+    BACKEND_FLAG="-DWITH_CUDA_BACKEND=OFF -DWITH_ROCM_BACKEND=OFF -DWITH_LEVEL_ZERO_BACKEND=ON -DWITH_OPENCL_BACKEND=ON"
 fi
 
-if [ -z "$CUDA_PATH" ] || [ ! -x "$CUDA_PATH/bin/nvcc" ]; then
-    echo "Error: Valid CUDA not found. Please install CUDA or set CUDA_HOME."
-    exit 1
-fi
-echo "      CUDA detected at: $CUDA_PATH"
+# ================= Step 3: Install Miniconda & LLVM =================
+echo -e "${GREEN}[Step 3/7] Installing Miniconda & LLVM Environment...${NC}"
+DIR_CONDA="$INSTALL_DIR/miniconda"; LOG_CONDA="$LOG_DIR/1_conda_install.log"
 
-# ================= 2. Install Miniconda and configure environment (LLVM) =================
-echo "[1/5] Installing Miniconda & LLVM Environment..."
-if [ ! -f "$PKG_CONDA_SH" ]; then
-    echo "Error: $PKG_CONDA_SH not found."
-    exit 1
-fi
-
-# Install Miniconda
-bash "$PKG_CONDA_SH" -b -p "$DIR_CONDA" -f > "$LOG_DIR/1_conda_install.log" 2>&1
-
-# Activate Conda
+bash "$DOWNLOAD_DIR/$FILE_CONDA" -b -p "$DIR_CONDA" -f > "$LOG_CONDA" 2>&1
 source "$DIR_CONDA/bin/activate"
 
-# Create Conda environment with LLVM 
-echo "      Creating conda env '$ENV_NAME' (using conda-forge)..."
-conda create -n "$ENV_NAME" python=3.10 -c conda-forge --override-channels -y > "$LOG_DIR/1_conda_create.log" 2>&1
+# [Fix] Handle Anaconda ToS and channel configuration
+conda config --set always_yes yes >> "$LOG_CONDA" 2>&1
+conda config --remove channels defaults >> "$LOG_CONDA" 2>&1 || true
+conda config --add channels conda-forge >> "$LOG_CONDA" 2>&1
 
+echo "      Creating environment '$ENV_NAME'..."
+conda create -n "$ENV_NAME" python=3.10 --override-channels -c conda-forge -y >> "$LOG_CONDA" 2>&1
 conda activate "$ENV_NAME"
 
-# install LLVM dependencies
-echo "      Installing LLVM packages..."
+echo "      Installing LLVM 16 & Compiler-RT..."
+# Added numactl (for libnuma) and compiler-rt (for builtins)
 conda install clang=16 clangxx=16 clangdev=16 llvmdev=16 llvm=16 llvm-tools=16 llvm-openmp \
-    libstdcxx-ng cmake make ninja pkg-config ncurses zlib zstd libffi libxml2 \
-    -c conda-forge --override-channels -y > "$LOG_DIR/1_conda_pkgs.log" 2>&1
+    compiler-rt=16 numactl cmake make ninja pkg-config ncurses zlib zstd libffi libxml2 \
+    --override-channels -c conda-forge -y >> "$LOG_CONDA" 2>&1
 
-echo "      LLVM installed in Conda environment."
-echo "      Miniconda and LLVM environment setup completed."
-echo "      Miniconda path: $DIR_CONDA"
+# [Fix] Conda LLVM path hack: Symlink builtins to where AdaptiveCpp expects them
+BUILTIN_DEST_DIR="$CONDA_PREFIX/lib/clang/16/lib/linux"
+mkdir -p "$BUILTIN_DEST_DIR"
+ACTUAL_BUILTIN=$(find "$CONDA_PREFIX/lib/clang/16" -name "libclang_rt.builtins-x86_64.a" | head -n 1)
 
-# ================= 3. Install Boost =================
-echo "[2/5] Installing Boost 1.83.0..."
-# unzip install
-tar -xf "$PKG_BOOST_TAR" -C "$INSTALL_DIR"
-
-# find boost source directory 
-BOOST_SRC_DIR=$(find "$INSTALL_DIR" -maxdepth 1 -type d -name "boost*" | head -n 1)
-
-if [ -z "$BOOST_SRC_DIR" ]; then 
-    echo "Error: Failed to find unpacked boost directory in $INSTALL_DIR"
-    exit 1
+if [ -n "$ACTUAL_BUILTIN" ]; then
+    # Only create symlink if source and destination are different paths
+    TARGET_PATH="$BUILTIN_DEST_DIR/libclang_rt.builtins-x86_64.a"
+    if [ "$ACTUAL_BUILTIN" != "$TARGET_PATH" ]; then
+        echo "      Creating compiler-rt symlink..."
+        ln -sf "$ACTUAL_BUILTIN" "$TARGET_PATH"
+    fi
 fi
 
+# ================= Step 4: Install Boost =================
+echo -e "${GREEN}[Step 4/7] Installing Boost 1.83.0...${NC}"
+DIR_BOOST="$INSTALL_DIR/boost"; LOG_BOOST="$LOG_DIR/2_boost_install.log"
+unset CPLUS_INCLUDE_PATH; unset CPATH
+
+tar -xf "$DOWNLOAD_DIR/$FILE_BOOST" -C "$INSTALL_DIR"
+BOOST_SRC_DIR=$(find "$INSTALL_DIR" -maxdepth 1 -type d -name "boost*" | head -n 1)
 cd "$BOOST_SRC_DIR"
 
-CLANG_BIN="$CONDA_PREFIX/bin/clang++"
+./bootstrap.sh --prefix="$DIR_BOOST" > "$LOG_BOOST" 2>&1
+echo "using clang : local : $CONDA_PREFIX/bin/clang++ : <cxxflags>\"-std=c++17 -fPIC -I$BOOST_SRC_DIR\" ;" > user-config.jam
 
-./bootstrap.sh --prefix="$DIR_BOOST" > "$LOG_DIR/2_boost_bootstrap.log" 2>&1
+if ! ./b2 install -j$(nproc) -q --user-config=user-config.jam toolset=clang-local link=shared,static threading=multi \
+    --with-fiber --with-context --with-thread --with-system --with-atomic --with-filesystem --with-program_options \
+    >> "$LOG_BOOST" 2>&1; then
+    echo -e "${RED}Error: Boost failed! Check log: $LOG_BOOST${NC}"; exit 1
+fi
+cd "$EXTERNAL_DIR"; rm -rf "$BOOST_SRC_DIR"
 
-# set user-config.jam
-echo "using clang : local : $CLANG_BIN : <cxxflags>\"-std=c++14 -fPIC -I$BOOST_SRC_DIR\" ;" > user-config.jam
+# ================= Step 5: Install AdaptiveCpp =================
+echo -e "${GREEN}[Step 5/7] Installing AdaptiveCpp...${NC}"
+DIR_ACPP="$INSTALL_DIR/AdaptiveCpp"; LOG_ACPP="$LOG_DIR/3_acpp_build.log"
 
-echo "      Installing Boost..."
-./b2 install -j$(nproc) -q \
-    --user-config=user-config.jam \
-    toolset=clang-local \
-    link=shared,static \
-    threading=multi \
-    --with-fiber --with-context --with-thread --with-system --with-atomic \
-    --with-chrono --with-filesystem --with-program_options --with-serialization \
-    --with-iostreams --with-regex --with-date_time --with-random --with-container \
-    > "$LOG_DIR/2_boost_install.log" 2>&1
+tar -xf "$DOWNLOAD_DIR/$FILE_ACPP_SRC" -C "$EXTERNAL_DIR"
+SRC_ACPP=$(find "$EXTERNAL_DIR" -maxdepth 1 -type d -name "AdaptiveCpp*" | grep -v "install" | head -n 1)
+mkdir -p "$SRC_ACPP/build" && cd "$SRC_ACPP/build"
 
-# Cleanup
-cd "$INSTALL_DIR"
-rm -rf "$BOOST_SRC_DIR"
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${GPU_TOOLKIT_ROOT}/lib:$LD_LIBRARY_PATH"
 
-echo "      Boost 1.83.0 completed."
-echo "      Boost path: $DIR_BOOST"
+echo "      Configuring CMake..."
+if ! cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$DIR_ACPP" -DBOOST_ROOT="$DIR_BOOST" \
+    -DLLVM_DIR="$CONDA_PREFIX/lib/cmake/llvm" -DCMAKE_C_COMPILER="$CONDA_PREFIX/bin/clang" \
+    -DCMAKE_CXX_COMPILER="$CONDA_PREFIX/bin/clang++" -DCMAKE_CXX_STANDARD=17 \
+    -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" -DCMAKE_C_FLAGS="-I$CONDA_PREFIX/include" \
+    -DCMAKE_CXX_FLAGS="-I$CONDA_PREFIX/include" -DCMAKE_INSTALL_RPATH="$CONDA_PREFIX/lib" \
+    -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_RPATH="$CONDA_PREFIX/lib" \
+    -DCMAKE_EXE_LINKER_FLAGS="$EXTRA_LINK_FLAGS" -DCMAKE_SHARED_LINKER_FLAGS="$EXTRA_LINK_FLAGS" \
+    $BACKEND_FLAG -DCUDA_TOOLKIT_ROOT_DIR="$GPU_TOOLKIT_ROOT" > "$LOG_ACPP" 2>&1; then
+    echo -e "${RED}Error: CMake failed! Check log: $LOG_ACPP${NC}"; exit 1
+fi
 
-# ================= 4. Install AdaptiveCpp =================
-echo "[3/5] Installing AdaptiveCpp..."
-BUILD_ACPP="$SRC_ACPP/build"
-rm -rf "$BUILD_ACPP" && mkdir -p "$BUILD_ACPP"
-cd "$BUILD_ACPP"
+echo "      Compiling AdaptiveCpp..."
+make -j$(nproc) >> "$LOG_ACPP" 2>&1
+make install >> "$LOG_ACPP" 2>&1
+rm -rf "$SRC_ACPP"
 
-export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"
-
-cmake .. \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX="$DIR_ACPP" \
-    -DBOOST_ROOT="$DIR_BOOST" \
-    -DLLVM_DIR="$CONDA_PREFIX/lib/cmake/llvm" \
-    -DCMAKE_C_COMPILER="$CONDA_PREFIX/bin/clang" \
-    -DCMAKE_CXX_COMPILER="$CONDA_PREFIX/bin/clang++" \
-    -DCMAKE_CXX_STANDARD=17 \
-    -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" \
-    -DCMAKE_C_FLAGS="-I$CONDA_PREFIX/include" \
-    -DCMAKE_CXX_FLAGS="-I$CONDA_PREFIX/include" \
-    -DCMAKE_INSTALL_RPATH="$CONDA_PREFIX/lib" \
-    -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
-    -DCMAKE_BUILD_RPATH="$CONDA_PREFIX/lib" \
-    -DCMAKE_EXE_LINKER_FLAGS="-Wl,-rpath-link,$CONDA_PREFIX/lib" \
-    -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-rpath-link,$CONDA_PREFIX/lib" \
-    -DWITH_CUDA_BACKEND=ON \
-    -DCUDA_TOOLKIT_ROOT_DIR="$CUDA_PATH" \
-    -DWITH_ROCM_BACKEND=OFF \
-    -DWITH_OPENCL_BACKEND=OFF \
-    -DWITH_LEVEL_ZERO_BACKEND=OFF \
-    > "$LOG_DIR/3_acpp_cmake.log" 2>&1
-
-make -j$(nproc) > "$LOG_DIR/3_acpp_build.log" 2>&1
-make install > "$LOG_DIR/3_acpp_install.log" 2>&1
-
-echo "      AdaptiveCpp completed."
-echo "      AdaptiveCpp path: $DIR_ACPP"
-
-# ================= 5. Install Cantera =================
-echo "[4/5] Installing Cantera..."
-# install Cantera dependencies
-conda install scons packaging numpy cython typing_extensions ruamel.yaml jinja2 \
-    -c conda-forge --override-channels -y > "$LOG_DIR/4_cantera_deps.log" 2>&1
-
-cd "$SRC_CANTERA"
-scons clean > /dev/null 2>&1 || true
-
-# set cantera.conf
-cat > cantera.conf <<EOF
-prefix = '$DIR_CANTERA'
-python_cmd = '$(which python)'
-hdf_support = 'n'
-system_eigen = 'n'
-system_fmt = 'n'
-system_highfive = 'n'
-system_yamlcpp = 'n'
-system_sundials = 'n'
-system_blas_lapack = 'n'
-boost_inc_dir = '$DIR_BOOST/include'
-boost_lib_dir = '$DIR_BOOST/lib'
-EOF
-
-echo "      Compiling Cantera..."
-scons build > "$LOG_DIR/4_cantera_build.log" 2>&1
-scons install > "$LOG_DIR/4_cantera_install.log" 2>&1
-
-echo "      Cantera completed."
-echo "      Cantera path: $DIR_CANTERA"
-echo ">>> All dependencies completed!"
-
-# ================= 6. Generate setvars script =================
-echo "[0/1] Generating XFLUIDS_setvars.sh..."
+# ================= Step 6: Generate Environment Script =================
+echo -e "${GREEN}[Step 6/7] Generating Environment Script (XFLUIDS_AdaptiveCpp_setvars.sh)...${NC}"
 SETVARS_FILE="$PROJECT_ROOT/XFLUIDS_AdaptiveCpp_setvars.sh"
-
 cat > "$SETVARS_FILE" <<EOF
 #!/bin/bash
-# Generated by install.sh
-
-# Boost
-export BOOST_ROOT=$DIR_BOOST
-export LD_LIBRARY_PATH=\$BOOST_ROOT/lib:\$LD_LIBRARY_PATH
-export CPLUS_INCLUDE_PATH=\$BOOST_ROOT/include:\$CPLUS_INCLUDE_PATH
-
-# AdaptiveCpp
-export ADAPTIVECPP_ROOT=$DIR_ACPP
-export PATH=\$ADAPTIVECPP_ROOT/bin:\$PATH
-export CPATH=\$ADAPTIVECPP_ROOT/include/AdaptiveCpp:\$CPATH
-export LD_LIBRARY_PATH=\$ADAPTIVECPP_ROOT/lib:\$LD_LIBRARY_PATH
-
-# Cantera
-export CANTERA_ROOT=$DIR_CANTERA
-export CPATH=\$CANTERA_ROOT/include:\$CPATH
-export LD_LIBRARY_PATH=\$CANTERA_ROOT/lib:\$LD_LIBRARY_PATH
-
-echo "XFLUIDS environment variables loaded."
+# XFLUIDS Environment Loader (AdaptiveCpp)
+unset ONEAPI_ROOT; unset CMPLR_ROOT; unset CPATH; unset CPLUS_INCLUDE_PATH
+export BOOST_ROOT="$DIR_BOOST"
+export LD_LIBRARY_PATH="\$BOOST_ROOT/lib:\$LD_LIBRARY_PATH"
+export CPLUS_INCLUDE_PATH="\$BOOST_ROOT/include:\$CPLUS_INCLUDE_PATH"
+export ADAPTIVECPP_ROOT="$DIR_ACPP"
+export PATH="\$ADAPTIVECPP_ROOT/bin:\$PATH"
+export CPATH="\$ADAPTIVECPP_ROOT/include/AdaptiveCpp:\$CPATH"
+export LD_LIBRARY_PATH="\$ADAPTIVECPP_ROOT/lib:\$LD_LIBRARY_PATH"
+[ -d "$GPU_TOOLKIT_ROOT/lib" ] && export LD_LIBRARY_PATH="$GPU_TOOLKIT_ROOT/lib:\$LD_LIBRARY_PATH"
+echo -e "\033[0;32m>>> [Env] XFLUIDS AdaptiveCpp environment loaded.\033[0m"
 EOF
-
 chmod +x "$SETVARS_FILE"
 
-echo "      XFLUIDS_setvars.sh completed."
-echo "      XFLUIDS_setvars.sh path: $SETVARS_FILE"
-# ================= Completed =================
+# ================= Step 7: Generate Build Script =================
+echo -e "${GREEN}[Step 7/7] Generating Build Script (run_build_XFLUIDS_AdaptiveCpp.sh)...${NC}"
+BUILD_SCRIPT="$PROJECT_ROOT/run_build_XFLUIDS_AdaptiveCpp.sh"
+cat > "$BUILD_SCRIPT" <<EOF
+#!/bin/bash
+set -e
+GREEN='\033[0;32m'; NC='\033[0m'
+echo -e "\${GREEN}>>> [Build] Loading AdaptiveCpp Environment... \${NC}"
+source "$SETVARS_FILE"
+mkdir -p "$PROJECT_ROOT/build" && cd "$PROJECT_ROOT/build" && rm -rf *
+echo -e "\${GREEN}>>> [Build] Configuring CMake... \${NC}"
+cmake .. -DCMAKE_BUILD_TYPE=Release -DACPP_PATH="$DIR_ACPP" -DBOOST_ROOT="$DIR_BOOST" \
+    -DCOMPILER_PATH="$DIR_CONDA/envs/$ENV_NAME" -DCMAKE_PREFIX_PATH="$DIR_CONDA/envs/$ENV_NAME" \
+    -DCMAKE_CXX_COMPILER="$DIR_CONDA/envs/$ENV_NAME/bin/clang++" \
+    -DCMAKE_INSTALL_RPATH="$DIR_CONDA/envs/$ENV_NAME/lib;$DIR_BOOST/lib" -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON
+echo -e "\${GREEN}>>> [Build] Compiling... \${NC}"
+make -j\$(nproc)
+echo -e "\${GREEN}>>> [Build] Compilation Completed Successfully! \${NC}"
+EOF
+chmod +x "$BUILD_SCRIPT"
+
+echo -e "${GREEN}>>> Installation All Done!${NC}"
