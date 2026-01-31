@@ -1,4 +1,4 @@
-# XFLUIDS  v0.1 user mannual
+# XFLUIDS v0.1 User Manual
 
 ## 1. 安装与环境配置
 
@@ -12,8 +12,8 @@
 | :--------------- | :-------------------------------------------- | :----------------------------------------------------------- |
 | **安装包体积**   | 较大 (约 2.3GB)                               | 较小 (<10MB)                                                 |
 | **编译器依赖**   | 自带 `icpx` / `clang++`                       | **必须依赖 LLVM 环境**                                       |
-| **适配性**       | 支持隔离安装，适配较好                        | 若无系统级 LLVM，须通过 Conda 环境安装 (项目安装脚本已内置此逻辑) |
-| **GPU 后端支持** | 针对 Intel 深度优化；支持 NVIDIA/AMD (需插件) | 支持 NVIDIA (CUDA)，AMD (ROCm) 以及 **Generic (SSCP)** 模式  |
+| **适配性**       | 支持隔离安装，适配较好                        | 若无系统级 LLVM，须通过 Conda 环境安装 |
+| **GPU 后端支持** | 针对 Intel 设备高度优化；支持 NVIDIA/AMD (需插件) | 支持 NVIDIA (CUDA)，AMD (ROCm)，Intel (SYCL) 以及 **Generic (SSCP)** 模式 |
 | **额外功能** | 自带MPI以及Intel的数学库(比如oneMKL) ，可以采用Intel性能分析工具（比如VTune和Advisor）| 需要额外安装MPI和其他数学库，无性能分析工具 |
 > **特别注意**：在超算等无 `sudo` 权限的平台上，如果无法通过 `apt` 安装原生 LLVM，对于AdaptiveCpp  SYCL implementation需依赖项目提供的 Conda 环境来部署 LLVM 工具链。
 
@@ -43,11 +43,15 @@ git clone https://github.com/XFluids/XFluids.git
 
 #### Implementation A: Intel oneAPI
 基于 Intel 官方工具链，支持通过Codeplay插件适配 NVIDIA/AMD GPU。
+
+> 对于较老的设备（比如P100）,通过测试发现需要使用旧版本的oneAPI (2024.0.0)搭配icpx来编译，才能提高运行效率。
+
 *   **安装流程**：
+    
     1.  安装脚本自动安装 Intel oneAPI Base Toolkit (2025.0)。
     2.  **插件适配**：若检测到非 Intel GPU，会自动安装 Codeplay 提供的插件（目前支持 CUDA 12.0 或 ROCm 5.4/6.1）。
     3.  使用 Intel `clang++` 编译器编译并安装 Boost 1.83 库。
-*   **执行安装**：
+*   **安装命令**：
     
     ```bash
     chmod +x run_install_oneAPI.sh
@@ -62,7 +66,8 @@ git clone https://github.com/XFluids/XFluids.git
     2.  **LLVM 部署**：在 Conda 环境中安装 LLVM/Clang 16 工具链，避免污染宿主机系统。
     3.  **Boost 编译**：使用 Conda 内置的 `clang++` 编译 Boost 1.83。
     4.  **AdaptiveCpp**：基于检测到的后端编译安装 AdaptiveCpp 运行时。
-*   **执行安装**：
+*   **安装命令**：
+    
     ```bash
     chmod +x run_install_AdaptiveCpp.sh
     ./run_install_AdaptiveCpp.sh
@@ -83,14 +88,18 @@ git clone https://github.com/XFluids/XFluids.git
 
 *   **oneAPI implementation**：
     
+    oneAPI implementation的编译脚本默认编译为CUDA版本，如果需要编译为ROCm/Intel/CPU版本，则需要手动将CMakeList.txt中`SelectDv`值修改为hip/intel/host。同时，编译脚本默认`ARCH`为86，需要根据个人设备情况修改CMakeList.txt中的`ARCH`值。
+    
     ```bash
     ./run_build_XFLUIDS_oneAPI.sh
     ```
     ![oneAPI启动编译脚本](./Figs/oneAPI/run_build_oneAPI_0.png)
-
+    
     ![oneAPI完成编译](./Figs/oneAPI/run_build_oneAPI_3.png)
-
+    
 *   **AdaptiveCpp implementation**：
+    
+    AdaptiveCpp implementation的编译脚本默认编译为`generic`版本，无需再次手动修改CMakeList.txt文件。
     
     ```bash
     ./run_build_XFLUIDS_AdaptiveCpp.sh
@@ -153,7 +162,7 @@ git clone https://github.com/XFluids/XFluids.git
 **CPU multithreading**：
 
 如果选择CPU作为运行设备，oneAPI和AdaptiveCpp的SYCL implementation都会采用多线程并行，如下图所示，在8核（关闭了超线程）的AMD 5800X上，XFLUIDS以多线程方式运行。
-		![oneAPI负载监控](./Figs/CPU_Multi_thread.png)
+	![oneAPI负载监控](./Figs/CPU_Multi_thread.png)
 
 
 
@@ -175,7 +184,10 @@ git clone https://github.com/XFluids/XFluids.git
     mpirun -n mx*my*mz ./XFLUIDS -mpi=mx,my,mz
     ```
 
+> 注意: -dev和-run的默认参数已经写在测试算例的json文件中（`settings`文件夹中）
+
 ### 3.2 关键特性：自适应 nd-range
+
 本项目包含针对异构硬件的 **自适应 nd-range 调优** 功能。
 1.  **第一遍运行（搜索阶段）**：
     初次运行时，求解器会在前几十步尝试不同的nd-range参数。终端输出会显示正在尝试的参数。
@@ -187,9 +199,41 @@ git clone https://github.com/XFluids/XFluids.git
 > **Hybrid 模式注意**：在混合计算模式下，虽然该功能被部分硬编码覆盖，但仍需运行两遍。第一遍只需运行 **2 步** 即可生成必要的缓存文件，第二遍运行即可进行正式计算。
 
 
-## 4.示例case
-### 4.1 
+## 4. 算例示例
+在完成相关依赖的安装和对XFLUIDS的初次编译后，在example路径下提供了两个算例的算例配置脚本文件，运行算例配置脚本文件后会修改CMakeList.txt中的算例配置，重新运行编译脚本后可在build中运行XFLUIDS进行计算。
+### 4.1 1d-insert-st
 
+```bash
+cd example/1d-insert-st
+chmod 777 activate_case.sh
+./activate_case.sh
+
+cd ../..
+./run_build_oneAPI.sh # oneAPI版本
+# ./run_build_AdaptiveCpp.sh # AdaptiveCpp版本
+cd build/
+source ../XFLUIDS_oneAPI_setvars.sh # oneAPI版本
+#source ../XFLUIDS_AdaptiveCpp_setvars.sh # AdaptiveCpp版本
+
+./XFLUIDS
+```
+
+### 4.2 2d-euler-vortex
+
+```bash
+cd example/2d-euler-vortex
+chmod 777 activate_case.sh
+./activate_case.sh
+
+cd ../..
+./run_build_oneAPI.sh # oneAPI版本
+# ./run_build_AdaptiveCpp.sh # AdaptiveCpp版本
+cd build/
+source ../XFLUIDS_oneAPI_setvars.sh # oneAPI版本
+#source ../XFLUIDS_AdaptiveCpp_setvars.sh # AdaptiveCpp版本
+
+./XFLUIDS
+```
 
 
 
@@ -277,6 +321,9 @@ make -j
     ![Hybrid_TEST_CASE=3结果](./Figs/Hybrid/[TEST_CASE=3]run_9.png)
 
 通过`top`和`watch -n 0 nvidia-smi`监控CPU/GPU负载情况。
+
+> 显然，第一个XFLUIDS进程执行在 **CPU 上（15个线程）**, 而第二个XFLUIDS进程执行在 **GPU上（通过一个CPU线程管理）**
+
 ![Hybrid_TEST_CASE=3监控0](./Figs/Hybrid/[TEST_CASE=3]watch-top.png)
 
 ![Hybrid_TEST_CASE=3监控0](./Figs/Hybrid/[TEST_CASE=3]watch-nvidia-smi.png)
@@ -293,4 +340,4 @@ make -j
     *   `HybridReWrite` 函数：定义了 `BlSz.Y_inner`（子域高度）。例如：Rank 0 (GPU) 分配 1760 行，Rank 1 (CPU) 分配 800 行。
     *   `init` 函数：覆写了全局物理尺寸 `global_domain_len_y` 和分辨率 `global_resolution_y`。
 3.  **算例设置 (`CMakeLists.txt` && `settings/2d-euler-vortex.json`)**:
-    需要修改CMakeList.txt中的`INIT_SAMPLE`字段，同时需修改对应算例json文件中 `Resolution` 字段以匹配源码中的总分辨率（如 `[2560, 2560, 0]`）。
+    需要修改CMakeList.txt中的`INIT_SAMPLE`字段，同时需修改对应算例Json文件中 `Resolution` 字段以匹配源码中的总分辨率（如 `[2560, 2560, 0]`）。
