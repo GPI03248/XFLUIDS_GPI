@@ -143,6 +143,8 @@ ELSEIF(SYCL_COMPILE_SYSTEM STREQUAL "oneAPI")
 	set(CMAKE_CXX_COMPILER "clang++") #clang++ # for Intel oneAPI compiling system
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsycl")
 
+    # delete warnings about VLA extension and disable fmt locale support
+    add_compile_options(-Wno-vla-cxx-extension)
     add_compile_options(-DFMT_LOCALE=0)
     
     message(STATUS "oneAPI: Disabling fmt's locale support to avoid libstdc++ conflicts.")

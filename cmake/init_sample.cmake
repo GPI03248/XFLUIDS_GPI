@@ -50,12 +50,11 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-reactive-st")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/reactive-st")
     set(INI_FILE "settings/1d-reactive-st.json")
 
-# actually EulerVortex case
 ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion")
-    set(COP "OFF")
-    set(Visc "OFF")
-    set(Visc_Heat "OFF")
-    set(Visc_Diffu "OFF")
+    set(COP "ON")
+    set(Visc "ON")
+    set(Visc_Heat "ON")
+    set(Visc_Diffu "ON")
     set(COP_CHEME "OFF")
     set(POSITIVITY_PRESERVING "OFF")
     set(INI_SAMPLE_PATH "/src/solver_Ini/sample/1D-X-Y-Z/diffusion")
@@ -99,6 +98,17 @@ ELSEIF(INIT_SAMPLE STREQUAL "1d-diffusion-layer")
 # // =======================================================
 # #### 2d sample
 # // =======================================================
+# actually EulerVortex case
+ELSEIF(INIT_SAMPLE STREQUAL "2d-euler-vortex")
+    set(COP "OFF")
+    set(Visc "OFF")
+    set(Visc_Heat "OFF")
+    set(Visc_Diffu "OFF")
+    set(COP_CHEME "OFF")
+    set(POSITIVITY_PRESERVING "OFF")
+    set(INI_SAMPLE_PATH "/src/solver_Ini/sample/2D-EulerVortex")
+    set(INI_FILE "settings/2d-euler-vortex.json")
+
 ELSEIF(INIT_SAMPLE STREQUAL "2d-riemann-shocks") # 2d-riemann(-shocks/-shock-interruption/-interruptions-plus/-interruptions-reduce)
     set(COP "OFF")
     set(Visc "OFF")
