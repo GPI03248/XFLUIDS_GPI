@@ -1,4 +1,4 @@
-add_subdirectory(cantera)
+#add_subdirectory(cantera)
 add_subdirectory(inishape)
 add_subdirectory(settings)
 add_subdirectory(outformat)
