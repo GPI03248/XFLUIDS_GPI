@@ -4,8 +4,8 @@ PROJECT(XFLUIDS LANGUAGES CXX)
 # // == Compile system =====================================
 # ####  1. oneAPI: Intel oneAPI compiling system  2. ACPP: OpenSYCL syclcc compiling system
 set(SYCL_COMPILE_SYSTEM "oneAPI") # # oneAPI or OpenSYCL compile system,
-set(SelectDv "cuda") # which platform: generic(for sscp), host(for cpu), cuda(for llvm-cuda), cuda-nvcxx(for nvhpc), hip(for amd)
-set(ARCH "86") # host: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
+set(SelectDv "hip") # which platform: generic(for sscp), host(for cpu), cuda(for llvm-cuda), cuda-nvcxx(for nvhpc), hip(for amd)
+set(ARCH "1031") # host: no ARCH needed; # cuda/cuda-nvcxx: 75 86;# hip: 906, 1030
 
 # // == MPI settings =======================================
 option(USE_MPI "if enable mpi" OFF)
