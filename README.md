@@ -32,7 +32,7 @@ other contributors:
 - Yixuan Lian
 
 ## References
-If you use XFluids for academic aplications, please cite our paper.
+If you use XFluids for academic aplications, please cite our paper.(https://doi.org/10.1016/j.cpc.2026.110095)
 
 ## Features
 - Support CPU, GPU (integrated & discrete), and FPGA without porting the code
@@ -110,18 +110,24 @@ The following GPUs have been tested:
 ### 2.1 Test Platform
 
 Our test platform consists of an Intel i7-13700K, NVIDIA RTX 3070, AMD RX 6700XT, and Intel Arc B580.
-![testDesktopFig0](./docs/Figs/Devices.jpg) 
-							![testDesktopFig1](./docs/Figs/setting_graphics.png)
+<p align="center">
+  <img src="./docs/Figs/Devices.jpg" width="45%" />
+  <img src="./docs/Figs/setting_graphics.png" width="45%" />
+</p>
 
 ### 2.2. Device discovery
 
 ### 2.2.1 AdaptiveCpp device discovery: exec "acpp-info" in cmd for device counting
 The failure of the AdaptiveCpp implementation to recognize AMD devices is due to the ROCm backend support not being enabled during the AdaptiveCpp installation.
-			![acpp-info](./docs/Figs/acpp-info-devices.png) 
+<p align="center">
+  <img src="./docs/Figs/acpp-info-devices.png" width="80%" />
+</p>
 
 ### 2.2.2. Intel oneAPI device discovery: exec "sycl-ls" in cmd for device counting
 As shown in the figure, the oneAPI implementation path on our test platform can simultaneously detect the Intel CPU, Intel integrated GPU (iGPU), and discrete GPUs (dGPU) from Intel, NVIDIA, and AMD.
-![sycl-ls](./docs/Figs/sycl-ls_devices.png)
+<p align="center">
+  <img src="./docs/Figs/sycl-ls_devices.png" width="80%" />
+</p>
 
 ### 2.3. Queue construction: set integer platform_id and device_id("DeviceSelect" in json file or option: -dev)
 NOTE: platform_id and device_id are revealed in [2.1-Device-discovery]("2.1. Device discovery")
