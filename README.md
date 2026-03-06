@@ -1,6 +1,6 @@
 <p align="center">
     <a href="https://github.com/XFluids/XFluids">
-        <img src="https://github.com/user-attachments/assets/29c0f7a6-1412-4cbe-9181-299349695014" width="350">
+        <img src="https://github.com/user-attachments/assets/29c0f7a6-1412-4cbe-9181-299349695014" width="200">
     </a>
     <br>
     <a href="https://github.com/XFluids/XFluids/pulls">
