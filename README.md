@@ -1,7 +1,10 @@
 <p align="center">
-    <a href="https://github.com/GPI03248/deepflame-dev">
-        <img src="https://github.com/user-attachments/assets/29c0f7a6-1412-4cbe-9181-299349695014">
+    <!-- 第一行：放置 Logo 并居中 -->
+    <a href="https://github.com/GPI03248/XFLUIDS_GPI">
+        <img src="https://github.com/user-attachments/assets/29c0f7a6-1412-4cbe-9181-299349695014" width="300">
     </a>
+    <br>
+    <!-- 第二行：放置所有徽章 -->
     <a href="https://github.com/GPI03248/XFLUIDS_GPI/pulls">
         <img src="https://img.shields.io/badge/contributions-welcome-red.svg?color=rgb(48%2C%20185%2C%20237)">
     </a>    
@@ -9,10 +12,10 @@
         <img src="https://img.shields.io/github/license/GPI03248/XFLUIDS_GPI?logo=GitHub&color=rgb(255%2C%20232%2C%2054)">
     </a>    
     <a href="https://github.com/XFluids/XFluids/blob/main/docs/User_Manual_EN.md">
-        <img src="https://img.shields.io/website?label=%20User_Manual&up_message=online&url=https%3a%2f%2fgithub.com%2fXFluids%2fXFluids%2fblob%2fmain%2fdocs%2fUser_Manual_EN.md&color=rgb(241%2C%20155%2C%2068)">
+        <img src="https://img.shields.io/badge/User__Manual-online-rgb(241%2C%20155%2C%2068)">
     </a>  
     <a href="https://github.com/XFluids/XFluids/blob/main/docs/User_Manual_CN.md">
-        <img src="https://img.shields.io/website?label=%20用户使用手册&up_message=online&url=https%3a%2f%2fgithub.com%2fXFluids%2fXFluids%2fblob%2fmain%2fdocs%2fUser_Manual_CN.md&color=rgb(241%2C%20155%2C%2068)">
+        <img src="https://img.shields.io/badge/%E7%94%A8%E6%88%B7%E4%BD%BF%E7%94%A8%E6%89%8B%E5%86%8C-online-rgb(241%2C%20155%2C%2068)">
     </a>  
     <a href="https://doi.org/10.1016/j.cpc.2026.110095">
         <img src="https://img.shields.io/badge/DOI-10.1016%2Fj.cpc.2026.110095-black?color=rgb(232%2C%2093%2C%2050)">
