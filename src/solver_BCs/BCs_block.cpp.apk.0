@@ -49,20 +49,20 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 
 	if (bl.DimX)
 	{
-		auto local_ndrange_x = sycl::range<3>(bl.dim_block_z, bl.dim_block_y, bl.Bwidth_X); // size of workgroup
-		auto global_ndrange_x = sycl::range<3>((bl.Zmax + local_ndrange_x[0] - 1) / local_ndrange_x[0] * local_ndrange_x[0],
+		auto local_ndrange_x = sycl::range<3>(bl.Bwidth_X, bl.dim_block_y, bl.dim_block_z); // size of workgroup
+		auto global_ndrange_x = sycl::range<3>(bl.Bwidth_X,
 											   (bl.Ymax + local_ndrange_x[1] - 1) / local_ndrange_x[1] * local_ndrange_x[1],
-											   bl.Bwidth_X);
+											   (bl.Zmax + local_ndrange_x[2] - 1) / local_ndrange_x[2] * local_ndrange_x[2]);
 
 #if USE_MPI
 
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_x, local_ndrange_x), [=](sycl::nd_item<3> index)
 							  {
-								  int k = index.get_global_id(0);
+								  int i0 = index.get_global_id(0) + 0;
+								  int i1 = index.get_global_id(0) + bl.Xmax - bl.Bwidth_X;
 								  int j = index.get_global_id(1);
-								  int i0 = index.get_global_id(2) + 0;
-								  int i1 = index.get_global_id(2) + bl.Xmax - bl.Bwidth_X;
+								  int k = index.get_global_id(2);
 
 								  FluidMpiCopyKernelX(i0, j, k, bl, ptr_TransBufSend_xmin, d_UI, 0, -bl.Bwidth_X, BorToBuf);					// X_MIN
 								  FluidMpiCopyKernelX(i1, j, k, bl, ptr_TransBufSend_xmax, d_UI, bl.Xmax - bl.Bwidth_X, bl.Bwidth_X, BorToBuf); // X_MAX
@@ -82,10 +82,10 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 			 { h.parallel_for(
 				   sycl::nd_range<3>(global_ndrange_x, local_ndrange_x), [=](sycl::nd_item<3> index)
 				   {
-					   int k = index.get_global_id(0);
+					   int i0 = index.get_global_id(0) + 0;
+					   int i1 = index.get_global_id(0) + bl.Xmax - bl.Bwidth_X;
 					   int j = index.get_global_id(1);
-					   int i0 = index.get_global_id(2) + 0;
-					   int i1 = index.get_global_id(2) + bl.Xmax - bl.Bwidth_X;
+					   int k = index.get_global_id(2);
 #if USE_MPI
 					   if (Trans.neighborsBC[XMIN] == BC_COPY) // 将接收到的RecvBuf拷入Ghostcell
 						   FluidMpiCopyKernelX(i0, j, k, bl, ptr_TransBufRecv_xmin, d_UI, 0, -bl.Bwidth_X, BufToBC);
@@ -103,20 +103,20 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 
 	if (bl.DimY)
 	{
-		auto local_ndrange_y = sycl::range<3>(bl.dim_block_z, bl.Bwidth_Y, bl.dim_block_x); // size of workgroup
-		auto global_ndrange_y = sycl::range<3>((bl.Zmax + local_ndrange_y[0] - 1) / local_ndrange_y[0] * local_ndrange_y[0],
+		auto local_ndrange_y = sycl::range<3>(bl.dim_block_x, bl.Bwidth_Y, bl.dim_block_z); // size of workgroup
+		auto global_ndrange_y = sycl::range<3>((bl.Xmax + local_ndrange_y[0] - 1) / local_ndrange_y[0] * local_ndrange_y[0],
 											   bl.Bwidth_Y,
-											   (bl.Xmax + local_ndrange_y[2] - 1) / local_ndrange_y[2] * local_ndrange_y[2]);
+											   (bl.Zmax + local_ndrange_y[2] - 1) / local_ndrange_y[2] * local_ndrange_y[2]);
 
 #if USE_MPI
 
 	q.submit([&](sycl::handler &h)
 			 { h.parallel_for(sycl::nd_range<3>(global_ndrange_y, local_ndrange_y), [=](sycl::nd_item<3> index)
 							  {
-								  int k = index.get_global_id(0);
+								  int i = index.get_global_id(0);
 								  int j0 = index.get_global_id(1) + 0;
 								  int j1 = index.get_global_id(1) + bl.Ymax - bl.Bwidth_Y;
-								  int i = index.get_global_id(2);
+								  int k = index.get_global_id(2);
 
 								  FluidMpiCopyKernelY(i, j0, k, bl, ptr_TransBufSend_ymin, d_UI, 0, -bl.Bwidth_Y, BorToBuf);					// X_MIN
 								  FluidMpiCopyKernelY(i, j1, k, bl, ptr_TransBufSend_ymax, d_UI, bl.Ymax - bl.Bwidth_Y, bl.Bwidth_Y, BorToBuf); // X_MAX
@@ -136,10 +136,10 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 			 { h.parallel_for(
 				   sycl::nd_range<3>(global_ndrange_y, local_ndrange_y), [=](sycl::nd_item<3> index)
 				   {
-								  int k = index.get_global_id(0);
+								  int i = index.get_global_id(0);
 								  int j0 = index.get_global_id(1) + 0;
 								  int j1 = index.get_global_id(1) + bl.Ymax - bl.Bwidth_Y;
-								  int i = index.get_global_id(2);
+								  int k = index.get_global_id(2);
 #if USE_MPI
 								  if (Trans.neighborsBC[YMIN] == BC_COPY) // 将接收到的RecvBuf拷入Ghostcell
 									  FluidMpiCopyKernelY(i, j0, k, bl, ptr_TransBufRecv_ymin, d_UI, 0, -bl.Bwidth_Y, BufToBC);
@@ -158,10 +158,10 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 
 	if (bl.DimZ)
 	{
-		auto local_ndrange_z = sycl::range<3>(bl.Bwidth_Z, bl.dim_block_y, bl.dim_block_x); // size of workgroup
-		auto global_ndrange_z = sycl::range<3>(bl.Bwidth_Z,
+		auto local_ndrange_z = sycl::range<3>(bl.dim_block_x, bl.dim_block_y, bl.Bwidth_Z); // size of workgroup
+		auto global_ndrange_z = sycl::range<3>((bl.Xmax + local_ndrange_z[0] - 1) / local_ndrange_z[0] * local_ndrange_z[0],
 											   (bl.Ymax + local_ndrange_z[1] - 1) / local_ndrange_z[1] * local_ndrange_z[1],
-											   (bl.Xmax + local_ndrange_z[2] - 1) / local_ndrange_z[2] * local_ndrange_z[2]);
+											   bl.Bwidth_Z);
 
 #if USE_MPI
 
@@ -169,10 +169,10 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 			 { h.parallel_for(
 				   sycl::nd_range<3>(global_ndrange_z, local_ndrange_z), [=](sycl::nd_item<3> index)
 				   {
-					   int k0 = index.get_global_id(0) + 0;
-					   int k1 = index.get_global_id(0) + bl.Zmax - bl.Bwidth_Z;
+					   int i = index.get_global_id(0);
 					   int j = index.get_global_id(1);
-					   int i = index.get_global_id(2);
+					   int k0 = index.get_global_id(2) + 0;
+					   int k1 = index.get_global_id(2) + bl.Zmax - bl.Bwidth_Z;
 
 					   FluidMpiCopyKernelZ(i, j, k0, bl, ptr_TransBufSend_zmin, d_UI, 0, -bl.Bwidth_Z, BorToBuf);					 // X_MIN
 					   FluidMpiCopyKernelZ(i, j, k1, bl, ptr_TransBufSend_zmax, d_UI, bl.Zmax - bl.Bwidth_Z, bl.Bwidth_Z, BorToBuf); // X_MAX
@@ -192,10 +192,10 @@ float FluidBoundaryCondition(sycl::queue &q, Setup setup, BConditions BCs[6], re
 			 { h.parallel_for(
 				   sycl::nd_range<3>(global_ndrange_z, local_ndrange_z), [=](sycl::nd_item<3> index)
 				   {
-					   int k0 = index.get_global_id(0) + 0;
-					   int k1 = index.get_global_id(0) + bl.Zmax - bl.Bwidth_Z;
+					   int i = index.get_global_id(0);
 					   int j = index.get_global_id(1);
-					   int i = index.get_global_id(2);
+					   int k0 = index.get_global_id(2) + 0;
+					   int k1 = index.get_global_id(2) + bl.Zmax - bl.Bwidth_Z;
 #if USE_MPI
 					   if (Trans.neighborsBC[ZMIN] == BC_COPY) // 将接收到的RecvBuf拷入Ghostcell
 						   FluidMpiCopyKernelZ(i, j, k0, bl, ptr_TransBufRecv_zmin, d_UI, 0, -bl.Bwidth_Z, BufToBC);

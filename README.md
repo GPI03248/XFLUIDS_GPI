@@ -126,7 +126,7 @@ The failure of the AdaptiveCpp implementation to recognize AMD devices is due to
 ### 2.2.2. Intel oneAPI device discovery: exec "sycl-ls" in cmd for device counting
 As shown in the figure, the oneAPI implementation path on our test platform can simultaneously detect the Intel CPU, Intel integrated GPU (iGPU), and discrete GPUs (dGPU) from Intel, NVIDIA, and AMD.
 <p align="center">
-  <img src="./docs/Figs/sycl-ls_devices.png" width="80%" />
+  <img src="./docs/Figs/sycl-ls_devices.png" width="100%" />
 </p>
 
 ### 2.3. Queue construction: set integer platform_id and device_id("DeviceSelect" in json file or option: -dev)
